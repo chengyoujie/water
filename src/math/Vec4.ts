@@ -1,3 +1,8 @@
-export class Vec4{
+import { Vec } from "./Vec";
+
+export class Vec4 extends Vec{
     
+    constructor(){
+        super(4);
+    }
 }

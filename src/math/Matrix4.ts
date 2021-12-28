@@ -5,6 +5,5 @@ export class Matrix4 extends Matrix{
         super(4);
     }
 
-
-
 }
+Matrix.regist(4, Matrix4);

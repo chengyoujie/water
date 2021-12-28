@@ -6,3 +6,4 @@ export class Matrix3 extends Matrix{
     }
     
 }
+Matrix.regist(3, Matrix3);

@@ -1,9 +1,11 @@
 // import { Log } from "./../utils/Log";
 
 
+import { Matrix } from "../math/Matrix";
 import { Matrix2 } from "../math/Matrix2";
 import { Matrix3 } from "../math/Matrix3";
 import { Matrix4 } from "../math/Matrix4";
+import { Vec } from "../math/Vec";
 import { Vec2 } from "../math/Vec2";
 import { Vec3 } from "../math/Vec3";
 import { Vec4 } from "../math/Vec4";
@@ -561,8 +563,8 @@ export const enum ShaderType{
     FRAGMENT = 35632,
 }
 
-export type Vec = Vec2|Vec3|Vec4;
-export type Matrix = Matrix2|Matrix3|Matrix4;
+// export type Vec = Vec2|Vec3|Vec4;
+// export type Matrix = Matrix2|Matrix3|Matrix4;
 export type ShaderDateType = Vec|Matrix|Float32Array|number;
 /**
  * Shader 的参数

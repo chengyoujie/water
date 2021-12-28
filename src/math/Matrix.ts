@@ -1,6 +1,5 @@
-import { Matrix2 } from "./Matrix2";
-import { Matrix3 } from "./Matrix3";
-import { Matrix4 } from "./Matrix4";
+import { Log } from "../utils/Log";
+import { Vec } from "./Vec";
 
 export abstract class Matrix{
 
@@ -9,6 +8,7 @@ export abstract class Matrix{
 
     constructor(size:2|3|4){
         this._size = size;
+        this.identity();
     }
 
     /**
@@ -57,9 +57,9 @@ export abstract class Matrix{
      * 矩阵相乘
      * @param matrix 
      */
-    public multiply(matrix:Matrix, result:Matrix){
+    public multiply(matrix:Matrix, result?:Matrix){
         let s = this;
-        result = result;
+        result = result || Matrix.get(s._size);
         let left = s.data;
         let right = matrix.data;
         let idxLeft:number;
@@ -74,6 +74,142 @@ export abstract class Matrix{
                 }
                 result.data[resultIdx] = value;
                 resultIdx ++;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将点转换   vec2 = Mat*vec 并将vec2的最后一行化为1即向量的w为1
+     * @param vec 
+     * @returns 
+     */
+    transformPoint(vec:Vec){
+        let s = this;
+        if(s.size != vec.size){
+            Log.warn("矩阵与向量不同size 不能相乘 matrix.size:"+s.size+" vec.size:"+vec.size);
+            return;
+        }
+        let result:Vec = Vec.get(s.size);
+        let idx:number = 0;
+        for(let i=0; i<s._size; i++){
+            let vecValue = 0;
+            for(let j=0; j<s._size; j++){
+                vecValue += s._data[idx]*vec.get(j);
+                idx ++;
+            }
+            if(i==s._size-1){//最后一行
+                result.divide(vecValue);
+            }else{
+                result.set(i, vecValue);
+            }
+        }
+        return result;
+    }
+
+    /** 
+     * 转换一个向量  向量的w=0
+     * @param vec 
+     */
+    transformVector(vec:Vec){
+        let s = this;
+        if(s.size != vec.size){
+            Log.warn("矩阵与向量不同size 不能相乘 matrix.size:"+s.size+" vec.size:"+vec.size);
+            return;
+        }
+        let result:Vec = Vec.get(s.size);
+        let idx:number = 0;
+        for(let i=0; i<s._size; i++){
+            if(i==s._size-1){//最后一行为0
+                result.set(i, 0);
+            }else{
+                let vecValue = 0;
+                for(let j=0; j<s._size; j++){
+                    vecValue += s._data[idx]*vec.get(j);
+                    idx ++;
+                }
+                result.set(i, vecValue);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 求矩阵的逆
+     */
+    invert(result?:Matrix){
+        let s = this;
+        result = result || Matrix.get(s.size);
+        let adjointMat = s.adjoint(result);
+        let det = s.det(s._data, s._size);
+        let idx:number = 0;
+        for(let row=0; row<s._size; row++){
+            for(let col=0; col<s._size; col++){
+                result.data[idx] = adjointMat.data[idx]/det;
+                idx++;
+            }
+        }
+        return result;
+    }
+
+    public test(){
+        let s= this;
+        return s.adjoint();
+    }
+
+    /**求行列式的值 */
+    private det(data:number[], size:number){
+        if(size>3){
+            let result = 0;
+            let tempArr = [];
+            //取第0行的col列计算行列式的值
+            for(let col=0; col<size; col++){
+                tempArr.length = 0;
+                let idx = 0;
+                for(let i=0; i<data.length; i++)
+                {
+                    if(i%size==col || Math.floor(i/size)==0)continue;
+                    tempArr[idx] = data[i];
+                    idx ++;
+                }
+                result += data[col]*Math.pow(-1, col)*this.det(tempArr, size-1);
+            }
+            return result;
+        }else if(size == 3){
+            return   data[0]*data[4]*data[8] 
+                    +data[1]*data[5]*data[6] 
+                    +data[2]*data[3]*data[7] 
+                    -data[2]*data[4]*data[6]
+                    -data[0]*data[5]*data[7]
+                    -data[1]*data[3]*data[8]
+        }else if(size == 2){
+            return data[0]*data[3]-data[1]*data[2];
+        }else if(size == 1){
+            return data[0];
+        }
+        return 0;
+    }
+
+    /**
+     * 伴随矩阵
+     */
+    private adjoint(result?:Matrix){
+        let s = this;
+        result = result || Matrix.get(s._size);
+        if(result.size != result.size)
+        {
+            Log.warn("计算伴随矩阵是 保存结果的矩阵大小不一致");
+            return;
+        }
+        for(let row=0; row<s._size; row++){
+            for(let col=0; col<s._size; col++){
+                let tempArr = [];
+                for(let i=0; i<s._data.length; i++)
+                {
+                    if(i%s._size==col || Math.floor(i/s._size)==row)continue;
+                    tempArr.push(s._data[i]);
+                }
+                result.data[col*s._size+row] = Math.pow(-1, row+col)*this.det(tempArr, s._size-1);
             }
         }
         return result;
@@ -146,20 +282,27 @@ export abstract class Matrix{
         }
         return str;
     }
-
+    /**矩阵的原始数据 */
     public get data(){
         return this._data;
     }
+    /**矩阵的大小 */
+    public get size(){
+        return this._size;
+    }
 
+    private static _matrixDic:{[size:number]:{new(...args):Matrix}} = {};
     /**
      * 获取一个矩阵
      * @param size 
      * @returns 
      */
     public static get(size:number){
-        if(size==2)return new Matrix2();
-        if(size==3)return new Matrix3();
-        if(size==4)return new Matrix4();
+        return new Matrix._matrixDic[size];
+    }
+
+    public static regist(size:number, matCls:{new(...args):Matrix}){
+        Matrix._matrixDic[size] = matCls;
     }
 
 }

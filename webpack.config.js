@@ -1,5 +1,6 @@
 var path = require("path");
 var HtmlwebpackPlugin = require("html-webpack-plugin")
+var CircularDependencyPlugin = require("circular-dependency-plugin");
 var webpack = require("webpack")
 
 var RootPath = path.resolve(__dirname);
@@ -51,6 +52,14 @@ module.exports = {
         new HtmlwebpackPlugin({
             template: "./index.html"
         }),
-        new webpack.HotModuleReplacementPlugin()
+        new webpack.HotModuleReplacementPlugin(),
+        new CircularDependencyPlugin({
+            exclude:/node_modules/,
+            include:/src/,
+            failOnError:true,
+            allowAsyncCycles:false,
+            cwd:process.cwd(),
+
+        })
     ]
 }
