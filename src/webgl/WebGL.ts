@@ -243,17 +243,28 @@ export class WebGL{
                 data.fun.call(gl, data.location, textureIdx);
                 textureIdx ++;
             }else{
+                let udata = data.data;
                 if(data.openParam){
-                    let udata = data.data;
                     if(udata instanceof GLArray)
                     {
                         data.fun.call(gl, data.location, ...udata.orginData);
+                    }else if(udata instanceof Matrix || udata instanceof Vec){
+                        data.fun.call(gl, data.location, udata.data);
                     }else{
                         Log.warn("请检查 unfirom 数据类型是否正确");
                         data.fun.call(gl, data.location, udata);
                     }
                 }else{
-                    data.fun.call(gl, data.location, data.data);
+                    if(udata instanceof GLArray)
+                    {
+                        data.fun.call(gl, data.location, ...udata.orginData);
+                    }else if(udata instanceof Matrix || udata instanceof Vec){
+                        data.fun.call(gl, data.location, new Float32Array(udata.data));
+                    }else{
+                        // Log.warn("请检查 unfirom 数据类型是否正确");
+                        data.fun.call(gl, data.location, udata);
+                    }
+                    // data.fun.call(gl, data.location, data.data);
                 }
             }
 
@@ -521,18 +532,19 @@ export class WebGL{
                 fun=  gl.uniform4i;
                 break;
             case gl.FLOAT_MAT2:
-                fun=  s.uniformMatrix2fv;
+                fun=  s.uniformMatrix2fv.bind(s);
                 openParam = false;
                 break;
-            case gl.FLOAT_MAT2:
-                fun=  s.uniformMatrix3fv;
+            case gl.FLOAT_MAT3:
+                fun=  s.uniformMatrix3fv.bind(s);
                 openParam = false;
                 break;
-            case gl.FLOAT_MAT2:
-                fun=  s.uniformMatrix4fv;
+            case gl.FLOAT_MAT4:
+                fun=  s.uniformMatrix4fv.bind(s);
                 openParam = false;
                 break;
         }
+
         return {fun:fun, openParam:openParam, location:location, data:data}
     }
 
@@ -565,7 +577,7 @@ export const enum ShaderType{
 
 // export type Vec = Vec2|Vec3|Vec4;
 // export type Matrix = Matrix2|Matrix3|Matrix4;
-export type ShaderDateType = Vec|Matrix|Float32Array|number;
+// export type ShaderDateType = Vec|Matrix|Float32Array|number;
 /**
  * Shader 的参数
  */
@@ -574,7 +586,7 @@ export interface ShaderParamData{
     // attribute?:number[],
     indexs:GLArray;
     // framebuffer?:FramebufferData;
-    [propName:string]:GLArray|number|boolean|string|TexImageSource|WebGL;
+    [propName:string]:GLArray|number|boolean|string|TexImageSource|WebGL|Matrix|Vec;
 }
 
 /**
@@ -611,5 +623,5 @@ export interface UniformData{
     location:WebGLUniformLocation;
     openParam:boolean;
     texure?:WebGLTexture;
-    data:GLArray|number|boolean|string;
+    data:GLArray|number|boolean|string|Float32Array;
 }

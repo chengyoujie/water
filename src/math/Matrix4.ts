@@ -73,8 +73,8 @@ export class Matrix4 extends Matrix{
         let s = this;
         s.identity();
         if(scaleX!=undefined)s._data[0] = scaleX;
-        if(scaleY!=undefined)s._data[5] = scaleX;
-        if(scaleZ!=undefined)s._data[10] = scaleX;
+        if(scaleY!=undefined)s._data[5] = scaleY;
+        if(scaleZ!=undefined)s._data[10] = scaleZ;
     }
 
     public translate(x?:number, y?:number, z?:number){
