@@ -137,7 +137,7 @@ export abstract class Matrix{
     /**
      * 求矩阵的逆
      */
-    invert(result?:Matrix){
+    public invert(result?:Matrix){
         let s = this;
         result = result || Matrix.get(s.size);
         let adjointMat = s.adjoint(result);
@@ -152,6 +152,8 @@ export abstract class Matrix{
         return result;
     }
 
+
+    /**测试用，后面要删掉 */
     public test(){
         let s= this;
         return s.adjoint();
