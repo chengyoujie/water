@@ -12,6 +12,7 @@ import { Vec4 } from "../math/Vec4";
 import { ComUtils } from "../utils/ComUtils";
 import { GLArray } from "../utils/GLArray";
 import { Log } from "../utils/Log";
+import { CubeMap } from "./CubeMap";
 
 
 
@@ -27,7 +28,7 @@ export class WebGL{
     /**shader 中用到的uniform 属性 */
     private _unifrom:{[name:string]:UniformData} = {};
     /**缓存图片 */
-    private _cacheImage:{[unifromName:string]:TexImageSource|WebGL} = {};
+    private _cacheImage:{[unifromName:string]:TexImageSource|WebGL|CubeMap} = {};
     /**是否发生改变 */
     private _dirty = false;
     /**界面尺寸是否发生变化 */
@@ -239,7 +240,7 @@ export class WebGL{
             let data = s._unifrom[unifromData.name];
             if(unifromData.type == gl.SAMPLER_2D || unifromData.type == gl.SAMPLER_CUBE){
                 gl.activeTexture(gl.TEXTURE0+textureIdx);
-                s.renderTexture(data.texure,  unifromData.name);
+                s.renderTexture(data.texure,  unifromData.name, textureIdx);
                 data.fun.call(gl, data.location, textureIdx);
                 textureIdx ++;
             }else{
@@ -387,7 +388,7 @@ export class WebGL{
     }
     
     private _cacheTexture:{[uniformname:string]:WebGLTexture} = {};
-    private renderTexture(texture:WebGLTexture, unifromName:string){
+    private renderTexture(texture:WebGLTexture, unifromName:string, textureIndex:number){
         let s = this;
         let gl = s._gl;
         let img = s._cacheImage[unifromName];
@@ -404,6 +405,17 @@ export class WebGL{
             }else{
                 Log.warn("请确保 shader 中使用WebGL作为图片的 WebGL启用 帧缓存 enableUseFrameBuffer")
             }
+        }else if(img instanceof CubeMap){//立方体的
+            // gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, textureIndex, gl.RGBA, img.negX.width, img.negX.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.negX);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posX);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.negY);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posX);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.negZ);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posZ);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         }else{
             gl.bindTexture(gl.TEXTURE_2D, texture);
             let needParseImage = true;
@@ -586,7 +598,7 @@ export interface ShaderParamData{
     // attribute?:number[],
     indexs:GLArray;
     // framebuffer?:FramebufferData;
-    [propName:string]:GLArray|number|boolean|string|TexImageSource|WebGL|Matrix|Vec;
+    [propName:string]:GLArray|number|boolean|string|TexImageSource|WebGL|Matrix|Vec|CubeMap;
 }
 
 /**

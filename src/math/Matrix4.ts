@@ -75,14 +75,17 @@ export class Matrix4 extends Matrix{
         if(scaleX!=undefined)s._data[0] = scaleX;
         if(scaleY!=undefined)s._data[5] = scaleY;
         if(scaleZ!=undefined)s._data[10] = scaleZ;
+        return s;
     }
 
+    /**移动 */
     public translate(x?:number, y?:number, z?:number){
         let s = this;
         s.identity();
         if(x!=undefined)s._data[3] = x;
         if(y!=undefined)s._data[7] = y;
         if(z!=undefined)s._data[11] = z;
+        return s;
     }
     /**
      * 绕着fromX, fromY, fromZ 旋转多少度

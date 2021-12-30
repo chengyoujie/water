@@ -6,7 +6,8 @@ export let app:App;
 
 window.onload = function(){
     let canvs = document.getElementById("webgl") as HTMLCanvasElement;
-    app = new App(canvs, window.innerWidth, window.innerHeight);    
+    app = new App(canvs, window.innerWidth, window.innerHeight); 
+    app.statr();   
 }
 
 function debounce(callFun, waitTime){
