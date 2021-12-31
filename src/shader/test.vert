@@ -7,6 +7,7 @@ varying vec3 coord;
 varying vec3 vColor;
 void main(){
     vColor = aColor;
-    coord = normalize(aPos);
+    coord = aPos;
     gl_Position = mat*vec4(aPos, 1.0);
+    // coord = normalize(gl_Position).xyz;
 }

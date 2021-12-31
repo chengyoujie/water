@@ -411,11 +411,13 @@ export class WebGL{
             gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.negX);
             gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posX);
             gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.negY);
-            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posX);
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posY);
             gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.negZ);
             gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, textureIndex, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.posZ);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
             gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         }else{
             gl.bindTexture(gl.TEXTURE_2D, texture);
             let needParseImage = true;
