@@ -16,6 +16,7 @@ import { Matrix } from "./math/Matrix";
 import { MatrixContext, MatrixStatusType } from "./swaming/MartixContext";
 import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
 import { SphereMesh } from "./swaming/mesh/SphereMesh";
+import { CubeMesh } from "./swaming/mesh/CubeMesh";
 
 export class App{
     public width:number;
@@ -112,13 +113,13 @@ export class App{
         // s._programs.push(program)
 
         
-        let mesh = new SphereMesh(10);
+        let mesh = new CubeMesh();
 
         let testMesh:ShaderParamData = {
             aPos:new GLArray(mesh.vertext),
             uMat:mvp,
             indexs:new GLArray(mesh.indexs),
-            drawType:DrawType.LINES
+            drawType:DrawType.TRIANGLES
         }
         let meshProgram = new WebGL(s._gl, meshVert, meshFrag);
         meshProgram.resize(s.width, s.height)
