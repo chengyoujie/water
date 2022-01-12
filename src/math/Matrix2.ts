@@ -1,6 +1,6 @@
 import { Matrix } from "./Matrix";
 
-export class Matrix2 extends Matrix{
+export class Matrix2 extends Matrix<Matrix2>{
     constructor(){
         super(2);
     }

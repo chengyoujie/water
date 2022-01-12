@@ -1,7 +1,7 @@
 import { Matrix } from "./Matrix";
 import { Vec3 } from "./Vec3";
 
-export class Matrix4 extends Matrix{
+export class Matrix4 extends Matrix<Matrix4>{
     constructor(){
         super(4);
     }
@@ -95,8 +95,9 @@ export class Matrix4 extends Matrix{
      * @param fromY 
      * @param fromZ 
      */
-    public roate(angle:number, fromX:number, fromY:number, fromZ:number){
+    public roate(angle:number, fromX:number, fromY:number, fromZ:number, result?:Matrix4){
         let s = this;
+        result = result || new Matrix4();
         s.identity();
         let dis = Math.sqrt(fromX*fromX+fromY*fromY+fromZ*fromZ);
         angle = angle*Math.PI/180;//转换成弧度
@@ -106,25 +107,25 @@ export class Matrix4 extends Matrix{
         let cos = Math.cos(angle);
         let sin = Math.sin(angle);
         let t = 1 - cos;
-        s._data[0] = x*x*t+cos;
-        s._data[1] = x*y*t-z*sin;
-        s._data[2] = x*z*t+y*sin;
-        s._data[3] = 0;
+        result.data[0] = x*x*t+cos;
+        result.data[1] = x*y*t-z*sin;
+        result.data[2] = x*z*t+y*sin;
+        result.data[3] = 0;
 
-        s._data[4] = y*x*t+z*sin;
-        s._data[5] = y*y*t+cos;
-        s._data[6] = y*z*t-x*sin;
-        s._data[7] = 0;
+        result.data[4] = y*x*t+z*sin;
+        result.data[5] = y*y*t+cos;
+        result.data[6] = y*z*t-x*sin;
+        result.data[7] = 0;
 
-        s._data[8] = z*x*t-y*sin;
-        s._data[9] = z*y*t+x*sin;
-        s._data[10] = z*z*t+cos;
-        s._data[11] = 0;
+        result.data[8] = z*x*t-y*sin;
+        result.data[9] = z*y*t+x*sin;
+        result.data[10] = z*z*t+cos;
+        result.data[11] = 0;
 
-        s._data[12] = 0;
-        s._data[13] = 0;
-        s._data[14] = 0;
-        s._data[15] = 1;
+        result.data[12] = 0;
+        result.data[13] = 0;
+        result.data[14] = 0;
+        result.data[15] = 1;
 
         return s;
 

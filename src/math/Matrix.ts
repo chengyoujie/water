@@ -1,7 +1,7 @@
 import { Log } from "../utils/Log";
 import { Vec } from "./Vec";
 
-export abstract class Matrix{
+export abstract class Matrix<T extends Matrix<any>>{
 
     protected _size:number = 0;
     protected _data:number[] = [];
@@ -57,9 +57,9 @@ export abstract class Matrix{
      * 矩阵相乘
      * @param matrix 
      */
-    public multiply(matrix:Matrix, result?:Matrix){
+    public multiply(matrix:T, result?:T){
         let s = this;
-        result = result || Matrix.get(s._size);
+        result = result || Matrix.get(s._size) as T;
         let left = s.data;
         let right = matrix.data;
         let idxLeft:number;
@@ -78,6 +78,7 @@ export abstract class Matrix{
         }
         return result;
     }
+
 
     /**
      * 将点转换   vec2 = Mat*vec 并将vec2的最后一行化为1即向量的w为1
@@ -137,9 +138,9 @@ export abstract class Matrix{
     /**
      * 求矩阵的逆
      */
-    public invert(result?:Matrix){
+    public invert(result?:T){
         let s = this;
-        result = result || Matrix.get(s.size);
+        result = result || Matrix.get(s.size) as T;
         let adjointMat = s.adjoint(result);
         let det = s.det(s._data, s._size);
         let idx:number = 0;
@@ -195,9 +196,9 @@ export abstract class Matrix{
     /**
      * 伴随矩阵
      */
-    private adjoint(result?:Matrix){
+    private adjoint(result?:T){
         let s = this;
-        result = result || Matrix.get(s._size);
+        result = result || Matrix.get(s._size) as T;
         if(result.size != result.size)
         {
             Log.warn("计算伴随矩阵是 保存结果的矩阵大小不一致");
@@ -215,6 +216,19 @@ export abstract class Matrix{
             }
         }
         return result;
+    }
+
+    public copy(mat:T){
+        let s = this;
+        if(s.size != mat.size)
+        {
+            Log.warn("计算伴随矩阵是 保存结果的矩阵大小不一致");
+            return;
+        }
+        for(let i=0; i<s._data.length; i++){
+            s._data[i] = mat.data[i];
+        }
+        return s;
     }
 
     /**
@@ -293,7 +307,7 @@ export abstract class Matrix{
         return this._size;
     }
 
-    private static _matrixDic:{[size:number]:{new(...args):Matrix}} = {};
+    private static _matrixDic:{[size:number]:{new(...args):Matrix<any>}} = {};
     /**
      * 获取一个矩阵
      * @param size 
@@ -303,7 +317,7 @@ export abstract class Matrix{
         return new Matrix._matrixDic[size];
     }
 
-    public static regist(size:number, matCls:{new(...args):Matrix}){
+    public static regist(size:number, matCls:{new(...args):Matrix<any>}){
         Matrix._matrixDic[size] = matCls;
     }
 

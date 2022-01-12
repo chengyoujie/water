@@ -1,7 +1,9 @@
 import { GLArray } from "./utils/GLArray";
-import { ShaderParamData, WebGL } from "./webgl/WebGL";
+import { DrawType, ShaderParamData, WebGL } from "./webgl/WebGL";
 import testFrag from "./shader/test.frag"
 import testVert from "./shader/test.vert"
+import meshFrag from "./shader/mesh.frag"
+import meshVert from "./shader/mesh.vert"
 import { Matrix4 } from "./math/Matrix4";
 import xneg from "./res/xneg.jpg"
 import zneg from "./res/zneg.jpg"
@@ -11,6 +13,9 @@ import zpos from "./res/zpos.jpg"
 import { ComUtils } from "./utils/ComUtils";
 import { CubeMap } from "./webgl/CubeMap";
 import { Matrix } from "./math/Matrix";
+import { MatrixContext, MatrixStatusType } from "./swaming/MartixContext";
+import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
+import { SphereMesh } from "./swaming/mesh/SphereMesh";
 
 export class App{
     public width:number;
@@ -18,11 +23,13 @@ export class App{
     private _mainCanvas:HTMLCanvasElement;
     private _gl:WebGLRenderingContext;
     private _programs:WebGL[] = [];
+    public matrixContext:MatrixContext;
     private _images:{[name:string]:TexImageSource} = {};
     
 
     constructor(mainCanvas:HTMLCanvasElement, width:number, height:number){
         let s = this;
+        s.matrixContext = new MatrixContext();
         s._mainCanvas = mainCanvas;
         s._gl = s._mainCanvas.getContext("webgl");
         s.resize(width, height);
@@ -59,22 +66,23 @@ export class App{
             0.4, 1.0, 1.0,  0.4, 1.0, 1.0,  0.4, 1.0, 1.0,  0.4, 1.0, 1.0   // v4-v7-v6-v5 back
         ]);
 
-        let mat = new Matrix4();
-        mat = mat.perspective(90, s.width/s.height, 0.001, 100);
-        s._mode = new Matrix4();
-        // mode.roate(60, 0, 1, 1);
-        s.mulit(new Matrix4().translate(0, 0, -4));
-        // s.mulit(new Matrix4().roate(-45, 0, 1, 0));
-        // s.mulit(new Matrix4().translate(0, 0, -4));
+        s.matrixContext.status = MatrixStatusType.Project;
+        s.matrixContext.indentity();
+        s.matrixContext.perspective(45, s.width/s.height, 0.01, 100);
+        s.matrixContext.status = MatrixStatusType.ModelView;
 
-        // s._mode = new Matrix4().roate(-45, 1, 0, 0).multiply(mode, new Matrix4()) as Matrix4;
-        // s._mode = new Matrix4().roate(-45, 0, 1, 0).multiply(mode, new Matrix4()) as Matrix4;
-        // s._mode = new Matrix4().translate(0, 0.5, 0).multiply(mode, new Matrix4()) as Matrix4;
-        let mat2 = new Matrix4();
-        mat.multiply(s._mode, mat2);
-        mat = mat2;
-        // new Matrix4().scale(0.3, 0.3, 1).multiply(mat.roate(45, 0, 0, 0));
-        // mat.scale(0.1, 0.5, 0.5)
+        s.matrixContext.indentity();
+        let angle = 0;
+        s.matrixContext.translate(0, 0, -4);
+        s.matrixContext.rotate(angle, 1, 0, 0);
+        s.matrixContext.rotate(angle, 0, 1, 0);
+        s.matrixContext.translate(0, 0.5, 0)
+
+        // s.matrixContext.translate(0, 0, -20)
+
+
+        let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
+        console.log(mvp.data)
         let cube = new CubeMap();
         cube.negX = s._images["xneg"];
         cube.posX = s._images["xpos"];
@@ -82,41 +90,52 @@ export class App{
         cube.posY = s._images["ypos"];
         cube.negZ = s._images["zneg"];
         cube.posZ = s._images["zpos"];
+        let idx = new GLArray([
+                        0, 1, 2,   0, 2, 3,    // front
+                        4, 5, 6,   4, 6, 7,    // right
+                        8, 9,10,   8,10,11,    // up
+                       12,13,14,  12,14,15,    // left
+                       16,17,18,  16,18,19,    // down
+                       20,21,22,  20,22,23     // back
+                    ])
 
-        let testData:ShaderParamData = {
-            aPos:vert,
-            aColor:color,
-            mat:mat,
-            uCube:cube,
-            indexs:new GLArray(
-                [
-                    0, 1, 2,   0, 2, 3,    // front
-                    4, 5, 6,   4, 6, 7,    // right
-                    8, 9,10,   8,10,11,    // up
-                   12,13,14,  12,14,15,    // left
-                   16,17,18,  16,18,19,    // down
-                   20,21,22,  20,22,23     // back
-                ])
+        // let testData:ShaderParamData = {
+        //     aPos:vert,
+        //     aColor:color,
+        //     uMat:mvp,
+        //     uCube:cube,
+        //     indexs:idx
+        // }
+        // let program = new WebGL(s._gl, testVert, testFrag);
+        // program.resize(s.width, s.height)
+        // program.bindData(testData)
+        // s._programs.push(program)
+
+        
+        let mesh = new SphereMesh(10);
+
+        let testMesh:ShaderParamData = {
+            aPos:new GLArray(mesh.vertext),
+            uMat:mvp,
+            indexs:new GLArray(mesh.indexs),
+            drawType:DrawType.LINES
         }
-        let program = new WebGL(s._gl, testVert, testFrag);
-        program.resize(s.width, s.height)
-        program.bindData(testData)
-        s._programs.push(program)
+        let meshProgram = new WebGL(s._gl, meshVert, meshFrag);
+        meshProgram.resize(s.width, s.height)
+        meshProgram.bindData(testMesh)
+        s._programs.push(meshProgram)
+
+
         s.update();
     }
 
-    private _mode:Matrix;
-    private mulit(mat:Matrix){
-        let s = this;
-        s._mode = s._mode.multiply(mat);
-    }
 
     private update(){
         let s = this;
         let gl = s._gl;
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.enable(gl.DEPTH_TEST);
+        // gl.enable(gl.DEPTH_TEST);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].render();
@@ -127,8 +146,8 @@ export class App{
 
     public resize(width:number, height:number){
         let s = this;
-        s.width = width; 
-        s.height = height;
+        s.width = 800;//width; 
+        s.height = 800;//height;
         s._mainCanvas.width = width;
         s._mainCanvas.height = height;
         s._mainCanvas.style.width = width + "px";

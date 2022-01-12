@@ -33,7 +33,8 @@ export class WebGL{
     private _dirty = false;
     /**界面尺寸是否发生变化 */
     private _sizeChange = false;
-
+    /**绘制类型 */
+    private _drawType:DrawType;
     // ---帧缓存相关
     /**是否使用帧缓存 */
     private _useFrameBuffer:boolean = false;
@@ -47,6 +48,7 @@ export class WebGL{
     private _frameBufferW :number;
     /**帧缓存的高度 */
     private _frameBufferH:number;
+
 
     private _width:number=800;
 
@@ -108,6 +110,7 @@ export class WebGL{
     public bindData(renderData:ShaderParamData){
         let s = this;
         let gl = s._gl;
+        s._drawType = renderData.drawType==undefined?DrawType.TRIANGLES:renderData.drawType;
         let activeAttribute = gl.getProgramParameter(s._program, gl.ACTIVE_ATTRIBUTES);
         s._attribute = {};
         for(let i=0; i<activeAttribute; i++){
@@ -278,7 +281,7 @@ export class WebGL{
             s._indexs.changeData = null;
         }
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, s._indexs.data);
-        gl.drawElements(gl.TRIANGLES, s._indexs.count, gl.UNSIGNED_BYTE, 0);
+        gl.drawElements(s._drawType, s._indexs.count, gl.UNSIGNED_BYTE, 0);
         s._dirty = false;
         
         gl.bindTexture(gl.TEXTURE_2D, null);
@@ -592,15 +595,26 @@ export const enum ShaderType{
 // export type Vec = Vec2|Vec3|Vec4;
 // export type Matrix = Matrix2|Matrix3|Matrix4;
 // export type ShaderDateType = Vec|Matrix|Float32Array|number;
+
+
 /**
  * Shader 的参数
+ * 规定 
+ * a开头的是 顶点坐标变量
+ * u开头的是全局变量
+ * indexs是索引坐标
  */
 export interface ShaderParamData{
     // unifrom?:{[key:string]:ShaderDateType},
     // attribute?:number[],
     indexs:GLArray;
-    // framebuffer?:FramebufferData;
-    [propName:string]:GLArray|number|boolean|string|TexImageSource|WebGL|Matrix|Vec|CubeMap;
+    drawType?:DrawType;
+    /**以a_xxx开头的顶点坐标 */
+    [vertext:`${"a_"|"a"}${string}`]:GLArray|number|Matrix<any>|Vec;
+    /**以u_xxx开头的全局变量 */
+    [unifrom:`${"u_"|"u"}${string}`]:GLArray|number|boolean|string|WebGL|Matrix<any>|Vec|CubeMap;
+    //之前的没有区分顶点和全局变量的
+    // [propName:string]:GLArray|number|boolean|string|WebGL|Matrix|Vec|CubeMap;
 }
 
 /**
@@ -638,4 +652,14 @@ export interface UniformData{
     openParam:boolean;
     texure?:WebGLTexture;
     data:GLArray|number|boolean|string|Float32Array;
+}
+
+export const enum DrawType{
+    POINTS  = 0,
+    LINES = 1,
+    LINE_LOOP = 2,
+    LINE_STRIP = 3,
+    TRIANGLES = 4,
+    TRIANGLE_STRIP = 5,
+    TRIANGLE_FAN = 6,
 }
