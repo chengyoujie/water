@@ -17,6 +17,6 @@ export abstract class Mesh{
      * @returns 
      */
     protected getPosByBinaryValue(v:number){
-        return [(v&1)*2-1, (v&2)*2-1, (v&4)*2-1]
+        return [(v&1)*2-1, (v&2)-1, (v&4)/2-1]
     }
 }

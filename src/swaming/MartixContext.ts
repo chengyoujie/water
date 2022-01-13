@@ -57,6 +57,13 @@ export class MatrixContext{
         s.mult(s._tempMatrix);
     }
 
+    public lookAt(ex:number, ey:number, ez:number, cx:number, cy:number, cz:number, ux:number, uy:number, uz:number){
+        let s = this;
+        let mat = new Matrix4();
+        mat.lookAt(ex, ey, ez, cx, cy, cz, ux, uy, uz);
+        s.mult(mat);
+    }
+
 
 
     /**矩阵状态 */

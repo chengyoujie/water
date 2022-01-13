@@ -4,12 +4,15 @@ import testFrag from "./shader/test.frag"
 import testVert from "./shader/test.vert"
 import meshFrag from "./shader/mesh.frag"
 import meshVert from "./shader/mesh.vert"
+import cubeFrag from "./shader/cube.frag"
+import cubeVert from "./shader/cube.vert"
 import { Matrix4 } from "./math/Matrix4";
 import xneg from "./res/xneg.jpg"
 import zneg from "./res/zneg.jpg"
 import xpos from "./res/xpos.jpg"
 import ypos from "./res/ypos.jpg"
 import zpos from "./res/zpos.jpg"
+import tiles from "./res/tiles.jpg"
 import { ComUtils } from "./utils/ComUtils";
 import { CubeMap } from "./webgl/CubeMap";
 import { Matrix } from "./math/Matrix";
@@ -17,6 +20,7 @@ import { MatrixContext, MatrixStatusType } from "./swaming/MartixContext";
 import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
 import { SphereMesh } from "./swaming/mesh/SphereMesh";
 import { CubeMesh } from "./swaming/mesh/CubeMesh";
+import { Vec3 } from "./math/Vec3";
 
 export class App{
     public width:number;
@@ -40,6 +44,7 @@ export class App{
         ComUtils.loadImages([
             {name:"xpos", src:xpos}, {name:"ypos", src:ypos}, {name:"zpos", src:zpos}, 
             {name:"xneg", src:xneg}, {name:"yneg", src:ypos}, {name:"zneg", src:zneg}, 
+            {name:"tiles", src:tiles}
         ]).then((imgs:any)=>{
             for(let i=0; i<imgs.length; i++)this._images[imgs[i].name] = imgs[i].img;
             this.init();
@@ -49,41 +54,32 @@ export class App{
 
     private init(){
         let s = this;
-        let vert:GLArray = new GLArray([
-                1, 1, 1,  -1, 1, 1,  -1,-1, 1,   1,-1, 1,    // v0-v1-v2-v3 front
-                1, 1, 1,   1,-1, 1,   1,-1,-1,   1, 1,-1,    // v0-v3-v4-v5 right
-                1, 1, 1,   1, 1,-1,  -1, 1,-1,  -1, 1, 1,    // v0-v5-v6-v1 up
-                -1, 1, 1,  -1, 1,-1,  -1,-1,-1,  -1,-1, 1,    // v1-v6-v7-v2 left
-                -1,-1,-1,   1,-1,-1,   1,-1, 1,  -1,-1, 1,    // v7-v4-v3-v2 down
-                1,-1,-1,  -1,-1,-1,  -1, 1,-1,   1, 1,-1     // v4-v7-v6-v5 back
-        ])
-        // for(let i=0; i<vert.length; i++) if(i%3!=0)vert.setValue(i, vert.getValue(i)*0.5)
-        let color:GLArray = new GLArray([
-            0.4, 0.4, 1.0,  0.4, 0.4, 1.0,  0.4, 0.4, 1.0,  0.4, 0.4, 1.0,  // v0-v1-v2-v3 front
-            0.4, 1.0, 0.4,  0.4, 1.0, 0.4,  0.4, 1.0, 0.4,  0.4, 1.0, 0.4,  // v0-v3-v4-v5 right
-            1.0, 0.4, 0.4,  1.0, 0.4, 0.4,  1.0, 0.4, 0.4,  1.0, 0.4, 0.4,  // v0-v5-v6-v1 up
-            1.0, 1.0, 0.4,  1.0, 1.0, 0.4,  1.0, 1.0, 0.4,  1.0, 1.0, 0.4,  // v1-v6-v7-v2 left
-            1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  // v7-v4-v3-v2 down
-            0.4, 1.0, 1.0,  0.4, 1.0, 1.0,  0.4, 1.0, 1.0,  0.4, 1.0, 1.0   // v4-v7-v6-v5 back
-        ]);
 
         s.matrixContext.status = MatrixStatusType.Project;
         s.matrixContext.indentity();
         s.matrixContext.perspective(45, s.width/s.height, 0.01, 100);
+        // s.matrixContext.lookAt(0.0, 0.0, 7.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
         s.matrixContext.status = MatrixStatusType.ModelView;
 
         s.matrixContext.indentity();
-        let angle = 0;
-        s.matrixContext.translate(0, 0, -4);
+        let angle = 45;
+        s.matrixContext.translate(0, 0, -6);
         s.matrixContext.rotate(angle, 1, 0, 0);
         s.matrixContext.rotate(angle, 0, 1, 0);
         s.matrixContext.translate(0, 0.5, 0)
 
         // s.matrixContext.translate(0, 0, -20)
-
+        //全局变量
+        let center = new Vec3(-0.4, -0.75, 0.2);
+        let oldCenter = center;
+        let radius = 0.25;
+        let lightDir = new Vec3(2.0, 2.0, -1.0);
 
         let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
+        mvp.transpose();
         console.log(mvp.data)
+
+        //水池
         let cube = new CubeMap();
         cube.negX = s._images["xneg"];
         cube.posX = s._images["xpos"];
@@ -91,40 +87,35 @@ export class App{
         cube.posY = s._images["ypos"];
         cube.negZ = s._images["zneg"];
         cube.posZ = s._images["zpos"];
-        let idx = new GLArray([
-                        0, 1, 2,   0, 2, 3,    // front
-                        4, 5, 6,   4, 6, 7,    // right
-                        8, 9,10,   8,10,11,    // up
-                       12,13,14,  12,14,15,    // left
-                       16,17,18,  16,18,19,    // down
-                       20,21,22,  20,22,23     // back
-                    ])
+        let cubeMesh = new CubeMesh();
+        // cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点
 
-        // let testData:ShaderParamData = {
-        //     aPos:vert,
-        //     aColor:color,
-        //     uMat:mvp,
-        //     uCube:cube,
-        //     indexs:idx
-        // }
-        // let program = new WebGL(s._gl, testVert, testFrag);
-        // program.resize(s.width, s.height)
-        // program.bindData(testData)
-        // s._programs.push(program)
-
-        
-        let mesh = new CubeMesh();
-
-        let testMesh:ShaderParamData = {
-            aPos:new GLArray(mesh.vertext),
+        let cubeData:ShaderParamData = {
+            aPos:new GLArray(cubeMesh.vertext),
             uMat:mvp,
-            indexs:new GLArray(mesh.indexs),
+            uCube:cube,
+            uTiles:tiles,
+            indexs:new GLArray(cubeMesh.indexs),
             drawType:DrawType.TRIANGLES
         }
-        let meshProgram = new WebGL(s._gl, meshVert, meshFrag);
-        meshProgram.resize(s.width, s.height)
-        meshProgram.bindData(testMesh)
-        s._programs.push(meshProgram)
+        let cubeProgram = new WebGL(s._gl, cubeVert, cubeFrag);
+        cubeProgram.resize(s.width, s.height)
+        cubeProgram.bindData(cubeData)
+        s._programs.push(cubeProgram)
+
+        
+        // let mesh = new CubeMesh();
+
+        // let testMesh:ShaderParamData = {
+        //     aPos:new GLArray(mesh.vertext),
+        //     uMat:mvp,
+        //     indexs:new GLArray(mesh.indexs),
+        //     drawType:DrawType.TRIANGLES
+        // }
+        // let meshProgram = new WebGL(s._gl, meshVert, meshFrag);
+        // meshProgram.resize(s.width, s.height)
+        // meshProgram.bindData(testMesh)
+        // s._programs.push(meshProgram)
 
 
         s.update();
@@ -136,12 +127,14 @@ export class App{
         let gl = s._gl;
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        // gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].render();
         }
         gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.CULL_FACE);
         requestAnimationFrame(this.update.bind(s));
     }
 
