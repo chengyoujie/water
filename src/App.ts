@@ -5,6 +5,8 @@ import cubeFrag from "./shader/cube.frag"
 import cubeVert from "./shader/cube.vert"
 import sphereFrag from "./shader/sphere.frag"
 import sphereVert from "./shader/sphere.vert"
+import waterFrag from "./shader/water.frag"
+import waterVert from "./shader/water.vert"
 import xneg from "./res/xneg.jpg"
 import zneg from "./res/zneg.jpg"
 import xpos from "./res/xpos.jpg"
@@ -114,7 +116,18 @@ export class App{
         sphereProgram.resize(s.width, s.height)
         sphereProgram.bindData(sphereData)
         s._programs.push(sphereProgram)
-
+        //水平面
+        let waterMesh = new PlaneMesh(10, 10);
+        let waterData:ShaderParamData = {
+            aPos:new GLArray(waterMesh.vertext),
+            uMat:mvp,
+            indexs:new GLArray(waterMesh.indexs),
+            drawType:DrawType.LINES
+        }
+        let waterProgram = new WebGL(s._gl, waterVert, waterFrag);
+        waterProgram.resize(s.width, s.height)
+        waterProgram.bindData(waterData)
+        s._programs.push(waterProgram)
 
         s.update();
     }
