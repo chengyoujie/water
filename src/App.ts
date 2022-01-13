@@ -1,12 +1,10 @@
 import { GLArray } from "./utils/GLArray";
 import { DrawType, ShaderParamData, WebGL } from "./webgl/WebGL";
-import testFrag from "./shader/test.frag"
-import testVert from "./shader/test.vert"
-import meshFrag from "./shader/mesh.frag"
-import meshVert from "./shader/mesh.vert"
+
 import cubeFrag from "./shader/cube.frag"
 import cubeVert from "./shader/cube.vert"
-import { Matrix4 } from "./math/Matrix4";
+import sphereFrag from "./shader/sphere.frag"
+import sphereVert from "./shader/sphere.vert"
 import xneg from "./res/xneg.jpg"
 import zneg from "./res/zneg.jpg"
 import xpos from "./res/xpos.jpg"
@@ -15,7 +13,6 @@ import zpos from "./res/zpos.jpg"
 import tiles from "./res/tiles.jpg"
 import { ComUtils } from "./utils/ComUtils";
 import { CubeMap } from "./webgl/CubeMap";
-import { Matrix } from "./math/Matrix";
 import { MatrixContext, MatrixStatusType } from "./swaming/MartixContext";
 import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
 import { SphereMesh } from "./swaming/mesh/SphereMesh";
@@ -62,7 +59,7 @@ export class App{
         s.matrixContext.status = MatrixStatusType.ModelView;
 
         s.matrixContext.indentity();
-        let angle = 45;
+        let angle = 0;
         s.matrixContext.translate(0, 0, -6);
         s.matrixContext.rotate(angle, 1, 0, 0);
         s.matrixContext.rotate(angle, 0, 1, 0);
@@ -76,7 +73,7 @@ export class App{
         let lightDir = new Vec3(2.0, 2.0, -1.0);
 
         let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
-        mvp.transpose();
+        mvp.transpose();//需要转置下
         console.log(mvp.data)
 
         //水池
@@ -88,7 +85,7 @@ export class App{
         cube.negZ = s._images["zneg"];
         cube.posZ = s._images["zpos"];
         let cubeMesh = new CubeMesh();
-        // cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点
+        cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点
 
         let cubeData:ShaderParamData = {
             aPos:new GLArray(cubeMesh.vertext),
@@ -103,19 +100,20 @@ export class App{
         cubeProgram.bindData(cubeData)
         s._programs.push(cubeProgram)
 
-        
-        // let mesh = new CubeMesh();
-
-        // let testMesh:ShaderParamData = {
-        //     aPos:new GLArray(mesh.vertext),
-        //     uMat:mvp,
-        //     indexs:new GLArray(mesh.indexs),
-        //     drawType:DrawType.TRIANGLES
-        // }
-        // let meshProgram = new WebGL(s._gl, meshVert, meshFrag);
-        // meshProgram.resize(s.width, s.height)
-        // meshProgram.bindData(testMesh)
-        // s._programs.push(meshProgram)
+        //球体
+        let sphereMesh = new SphereMesh(12);
+        let sphereData:ShaderParamData = {
+            aPos:new GLArray(sphereMesh.vertext),
+            uMat:mvp,
+            uSphereCenter:center,
+            uSphereRadius:radius,
+            indexs:new GLArray(sphereMesh.indexs),
+            drawType:DrawType.TRIANGLES
+        }
+        let sphereProgram = new WebGL(s._gl, sphereVert, sphereFrag);
+        sphereProgram.resize(s.width, s.height)
+        sphereProgram.bindData(sphereData)
+        s._programs.push(sphereProgram)
 
 
         s.update();

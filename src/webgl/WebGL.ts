@@ -252,8 +252,10 @@ export class WebGL{
                     if(udata instanceof GLArray)
                     {
                         data.fun.call(gl, data.location, ...udata.orginData);
-                    }else if(udata instanceof Matrix || udata instanceof Vec){
-                        data.fun.call(gl, data.location, udata.data);
+                    }else if(udata instanceof Matrix){
+                        data.fun.call(gl, data.location, ...udata.data);
+                    }else if(udata instanceof Vec){
+                        data.fun.call(gl, data.location, ...udata.data);
                     }else{
                         Log.warn("请检查 unfirom 数据类型是否正确");
                         data.fun.call(gl, data.location, udata);
@@ -262,7 +264,9 @@ export class WebGL{
                     if(udata instanceof GLArray)
                     {
                         data.fun.call(gl, data.location, ...udata.orginData);
-                    }else if(udata instanceof Matrix || udata instanceof Vec){
+                    }else if(udata instanceof Matrix){
+                        data.fun.call(gl, data.location, new Float32Array(udata.data));
+                    }else if(udata instanceof Vec){
                         data.fun.call(gl, data.location, new Float32Array(udata.data));
                     }else{
                         // Log.warn("请检查 unfirom 数据类型是否正确");
@@ -648,7 +652,9 @@ export interface IndexsData{
  */
 export interface UniformData{
     fun:(location:WebGLUniformLocation, ...data)=>void;
+    /**变量的位置 */
     location:WebGLUniformLocation;
+    /**参数需要展开 */
     openParam:boolean;
     texure?:WebGLTexture;
     data:GLArray|number|boolean|string|Float32Array;

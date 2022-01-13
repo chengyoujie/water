@@ -15,16 +15,17 @@ export class SphereMesh extends Mesh{
             let rowAng = Math.PI*i/detail;
             let xz = Math.sin(rowAng);
             let y = Math.cos(rowAng);
-            console.log(xz)
+            // console.log("-----"+y+" , "+xz+" -------")
             for(let j=0; j<=detail; j++){
                 let colAng = 2*Math.PI*j/detail;
+                // console.log(xz*Math.sin(colAng), y, xz*Math.cos(colAng))
                 s.vertext.push(xz*Math.sin(colAng), y, xz*Math.cos(colAng));
             }
         }
-        for(let i=0; i<detail; i++){
-            
-            for(let j=0; j<detail; j++){
+        for(let m=0; m<s.vertext.length; m++)s.indexs.push(m)
 
+        for(let i=0; i<detail; i++){
+            for(let j=0; j<detail; j++){
                 let k1 = i*(detail+1)+j;
                 let k2 = k1+detail +1;
                 s.indexs.push(k1, k2, k1+1);

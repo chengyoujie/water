@@ -4,5 +4,5 @@ uniform sampler2D uTiles;
 varying vec3 vCoord;
 
 void main(){
-    gl_FragColor = textureCube(uCube, normalize(vCoord));
+    gl_FragColor = textureCube(uCube, vCoord);
 }
