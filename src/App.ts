@@ -1,5 +1,5 @@
 import { GLArray } from "./utils/GLArray";
-import { DrawType, ShaderParamData, WebGL } from "./webgl/WebGL";
+import { ShaderParamData, WebGL } from "./webgl/WebGL";
 
 import cubeFrag from "./shader/cube.frag"
 import cubeVert from "./shader/cube.vert"
@@ -20,6 +20,7 @@ import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
 import { SphereMesh } from "./swaming/mesh/SphereMesh";
 import { CubeMesh } from "./swaming/mesh/CubeMesh";
 import { Vec3 } from "./math/Vec3";
+import { DrawType, ShaderEnableType } from "./webgl/WebGLInterface";
 
 export class App{
     public width:number;
@@ -78,24 +79,28 @@ export class App{
         mvp.transpose();//需要转置下
         console.log(mvp.data)
 
-        //水池
-        let cube = new CubeMap();
-        cube.negX = s._images["xneg"];
-        cube.posX = s._images["xpos"];
-        cube.negY = s._images["yneg"];
-        cube.posY = s._images["ypos"];
-        cube.negZ = s._images["zneg"];
-        cube.posZ = s._images["zpos"];
-        let cubeMesh = new CubeMesh();
-        cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点
+        // let cube = new CubeMap();
+        // cube.negX = s._images["xneg"];
+        // cube.posX = s._images["xpos"];
+        // cube.negY = s._images["yneg"];
+        // cube.posY = s._images["ypos"];
+        // cube.negZ = s._images["zneg"];
+        // cube.posZ = s._images["zpos"];
 
+
+        //水池
+        let cubeMesh = new CubeMesh();
+        cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点索引
         let cubeData:ShaderParamData = {
             aPos:new GLArray(cubeMesh.vertext),
             uMat:mvp,
-            uCube:cube,
+            uSphereCenter:center,
+            uSphereRadius:radius,
+            // uCube:cube,
             uTiles:tiles,
             indexs:new GLArray(cubeMesh.indexs),
-            drawType:DrawType.TRIANGLES
+            drawType:DrawType.TRIANGLES,
+            enable:[ShaderEnableType.DEPTH_TEST, ShaderEnableType.CULL_FACE]
         }
         let cubeProgram = new WebGL(s._gl, cubeVert, cubeFrag);
         cubeProgram.resize(s.width, s.height)
@@ -122,7 +127,7 @@ export class App{
             aPos:new GLArray(waterMesh.vertext),
             uMat:mvp,
             indexs:new GLArray(waterMesh.indexs),
-            drawType:DrawType.LINES
+            drawType:DrawType.TRIANGLES
         }
         let waterProgram = new WebGL(s._gl, waterVert, waterFrag);
         waterProgram.resize(s.width, s.height)
@@ -138,14 +143,10 @@ export class App{
         let gl = s._gl;
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.enable(gl.DEPTH_TEST);
-        gl.enable(gl.CULL_FACE);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].render();
         }
-        gl.disable(gl.DEPTH_TEST);
-        gl.disable(gl.CULL_FACE);
         requestAnimationFrame(this.update.bind(s));
     }
 
