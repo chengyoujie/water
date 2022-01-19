@@ -5,6 +5,10 @@ varying vec3 vCoord;
 uniform vec3 uSphereCenter;//圆的坐标
 uniform float uSphereRadius;//圆的半径
 uniform sampler2D uWater;
+uniform vec3 uLightDir;
+uniform sampler2D uCaustic;
+const float IOR_AIR = 1.0;//空气的折射率
+const float IOR_WATER = 1.333;//水的折射率
 const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);//水下面的颜色
 
 /**获取墙体的颜色*/
@@ -26,7 +30,17 @@ vec3 getWallColor(vec3 point){
     scale /= length(point);//池子的遮挡
     scale *= 1.0 - 0.9 / pow(length(point - uSphereCenter)/uSphereRadius, 4.0);//球体的遮挡
 
-    //z
+    //焦散
+    vec3 refractedLight = -refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR/IOR_WATER);//折射光
+    float diffuse = max(0.0, dot(refractedLight, noraml));
+    vec4 info = texture2D(uWater, point.xz*0.5+0.5);
+    if(point.y < info.r){
+        vec4 caustic = texture2D(uCaustic, 0.75 * (point.xz - point.y* refractedLight.xz/refractedLight.y) * 0.5 + 0.5);
+        scale += diffuse * caustic.r * 2.0 * caustic.g;
+    }else{
+        // vect t = 
+    }
+
     
     return wallColor*scale;
 }
@@ -35,6 +49,6 @@ void main(){
     vec4 info = texture2D(uWater, vCoord.xz*0.5+0.5);
     gl_FragColor = vec4(getWallColor(vCoord), 1.0);
     if(vCoord.y<info.r){
-        gl_FragColor.rgb = underwaterColor*1.2;
+        gl_FragColor.rgb *= underwaterColor*1.2;
     }
 }

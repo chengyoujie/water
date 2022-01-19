@@ -2,6 +2,8 @@ precision highp float;
 uniform vec3 uSphereCenter;//圆的坐标
 uniform float uSphereRadius;//圆的半径
 varying vec3 vPosition;
+uniform sampler2D uWater;
+const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);//水下面的颜色
 
 /**获取圆的颜色*/
 vec3 getSphereColor(vec3 position){
@@ -14,5 +16,9 @@ vec3 getSphereColor(vec3 position){
 }
 
 void main(){
+    vec4 info = texture2D(uWater, vPosition.xz*0.5+0.5);
     gl_FragColor = vec4(getSphereColor(vPosition), 1.0);
+    if(vPosition.y < info.r){
+        gl_FragColor.rgb *= underwaterColor * 1.2;
+    }
 }

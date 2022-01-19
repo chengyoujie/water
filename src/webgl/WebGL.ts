@@ -7,7 +7,7 @@ import { GLArray } from "../utils/GLArray";
 import { Log } from "../utils/Log";
 import { CubeMap } from "./CubeMap";
 import { Texture } from "./Texture";
-import { ClearBufferMask, DrawType, ShaderEnableType, ShaderType, TextureTarget } from "./WebGLInterface";
+import { ClearBufferMask, CullFaceMode, DrawType, ShaderEnableType, ShaderType, TextureTarget } from "./WebGLInterface";
 
 
 
@@ -175,6 +175,9 @@ export class WebGL implements ICanBindTexture{
         gl.useProgram(s._program);
         if(s._renderData.enable){
             for(let i=0; i<s._renderData.enable.length; i++)gl.enable(s._renderData.enable[i]);
+        }
+        if(s._renderData.cullFace){
+            gl.cullFace(s._renderData.cullFace);
         }
         let textureIdx = 0;
         if(s._useFrameBuffer){//使用帧缓存
@@ -524,6 +527,8 @@ export interface ShaderParamData{
     drawType?:DrawType;
     /**绘制时enable的参数  默认为空*/
     enable?:ShaderEnableType[],
+    /**当enable中含有 cullFace时面剔除 */
+    cullFace?:CullFaceMode,
     /**绘制时是否执行clearn */
     clearn?:ClearBufferMask[],
     /**以a_xxx开头的顶点坐标 */

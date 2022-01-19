@@ -1,0 +1,28 @@
+{
+    "defaultCreateIndex":0,
+    "skinRootPath":"",
+    "codeRootPath":"",
+    "create":
+    [   
+        
+    ],
+    
+    "template":
+    {
+    },
+    "timeFormat":"yyyy-MM-dd hh:mm:ss",
+
+    "idVisit":[
+        
+    ],
+    "fileVisit":[
+        {
+            "nameHas":"\\.ts$",
+            "useReg":true,
+            "exec":"node",
+            "execWorkSpace":"",
+            "showLog":true,
+            "execParam":"${workspace}/scripts/autocode/onTsFile.js ${filePath} ${selectStart} ${selectEnd}"
+        }
+    ]
+}

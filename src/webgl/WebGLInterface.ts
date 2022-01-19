@@ -104,3 +104,10 @@ export const enum DataType {
     UNSIGNED_INT                   = 0x1405,
     FLOAT                          = 0x1406,
 }
+
+export const enum CullFaceMode{
+    FRONT                          = 0x0404,
+    BACK                           = 0x0405,
+    FRONT_AND_BACK                 = 0x0408,
+
+}
