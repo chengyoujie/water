@@ -1,9 +1,10 @@
 
 import { Log } from "../utils/Log";
 import { ICanBindTexture } from "./WebGL";
-import { PixelFormat, TextureMagFilter, TextureMinFilter, TextureTarget, TextureWrapMode } from "./WebGLInterface";
+import { DataType, PixelFormat, TextureMagFilter, TextureMinFilter, TextureTarget, TextureWrapMode } from "./WebGLInterface";
 
 export class Texture implements ICanBindTexture{
+
     /**webgl纹理 对象*/
     private _texture:WebGLTexture;
 
@@ -14,6 +15,8 @@ export class Texture implements ICanBindTexture{
     private _imgSource:TexImageSource;
 
     private _textureChange:boolean = false;
+
+    private _imgSourceChange:boolean = false;
 
     private _gl:WebGLRenderingContext;
 
@@ -48,6 +51,7 @@ export class Texture implements ICanBindTexture{
         }
         if(!s._params)s._params = {};
         s._textureChange = true;
+        s._imgSourceChange = true;
     }
 
     public resize(width:number, height:number){
@@ -75,7 +79,7 @@ export class Texture implements ICanBindTexture{
         }else{
             s._imgSource = s._src;;
         }
-        s._textureChange = true;
+        s._imgSourceChange = true;
     }
 
     public get src(){
@@ -88,6 +92,21 @@ export class Texture implements ICanBindTexture{
 
     public get texture(){return this._texture};
 
+    public swapTexture(texture:Texture){
+        let s = this;
+        let temp = s._texture;
+        let oldW = s.width;
+        let oldH = s.height;
+        s._texture = texture._texture;
+        // s._textureChange = true;
+        s._width = texture.width;
+        s._height = texture.height;
+        texture._texture = temp;
+        texture._width = oldW;
+        texture._height = oldH;
+        // texture._textureChange = true;
+    }
+
     /**
      * 获取当前的texture
      * 注意：执行前先gl.bindTexture(xxx,xxxx)
@@ -98,18 +117,30 @@ export class Texture implements ICanBindTexture{
             Log.warn("Texture 中bindTexture 的gl 与传过来的gl不是同一个");
         }
         gl.bindTexture(target, s._texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         if(s._textureChange){    
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, s._params.filterMag || s._params.filter || gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,  s._params.filterMig || s._params.filter || gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, s._params.wrapS || s._params.wrap || gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, s._params.wrapT || s._params.wrap || gl.CLAMP_TO_EDGE);
-            let format = s._params.format || gl.RGBA; 
-            if(s._imgSource){
-                gl.texImage2D(gl.TEXTURE_2D, 0, format, format, gl.UNSIGNED_BYTE, s._imgSource);
-            }else{
-                gl.texImage2D(gl.TEXTURE_2D, 0, format, s._width, s._height, 0, format, gl.UNSIGNED_BYTE, null);
-            }
+            
             s._textureChange = false;
+        }
+        if(s._imgSourceChange){
+            let format = s._params.format || gl.RGBA; 
+            let type = s._params.type || gl.UNSIGNED_BYTE;
+            if(type == DataType.FLOAT)
+            {
+                if(!gl.getExtension('OES_texture_float')){
+                    Log.error("Texture 不支持Float类型")
+                }
+            }
+            if(s._imgSource){
+                gl.texImage2D(gl.TEXTURE_2D, 0, format, format, type, s._imgSource);
+            }else{
+                gl.texImage2D(gl.TEXTURE_2D, 0, format, s._width, s._height, 0, format, type, null);
+            }
+            s._imgSourceChange = false;
         }
         return s._texture;
     }
@@ -132,5 +163,7 @@ export interface TextureParam{
     filterMag?:TextureMagFilter;
     
     filterMig?:TextureMinFilter;
+
+    type?:DataType,
 
 }

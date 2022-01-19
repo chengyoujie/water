@@ -3,10 +3,16 @@ import { ShaderParamData, WebGL } from "./webgl/WebGL";
 
 import cubeFrag from "./shader/cube.frag"
 import cubeVert from "./shader/cube.vert"
+import testFrag from "./shader/test.frag"
+import testVert from "./shader/test.vert"
 import sphereFrag from "./shader/sphere.frag"
 import sphereVert from "./shader/sphere.vert"
 import waterFrag from "./shader/water.frag"
 import waterVert from "./shader/water.vert"
+import waterInfoDropFrag from "./shader/waterInfoDrop.frag"
+import waterInfoUpdateFrag from "./shader/waterInfoUpdate.frag"
+import waterInfoNormalFrag from "./shader/waterInfoNormal.frag"
+import waterInfo from "./shader/waterInfo.vert"
 import xneg from "./res/xneg.jpg"
 import zneg from "./res/zneg.jpg"
 import xpos from "./res/xpos.jpg"
@@ -20,7 +26,9 @@ import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
 import { SphereMesh } from "./swaming/mesh/SphereMesh";
 import { CubeMesh } from "./swaming/mesh/CubeMesh";
 import { Vec3 } from "./math/Vec3";
-import { DrawType, ShaderEnableType } from "./webgl/WebGLInterface";
+import { DataType, DrawType, ShaderEnableType, TextureMagFilter, TextureMinFilter } from "./webgl/WebGLInterface";
+import { Texture } from "./webgl/Texture";
+import { Vec2 } from "./math/Vec2";
 
 export class App{
     public width:number;
@@ -54,7 +62,8 @@ export class App{
 
     private init(){
         let s = this;
-
+        let gl = s._gl;
+        gl.clearColor(0, 0, 0, 1);
         s.matrixContext.status = MatrixStatusType.Project;
         s.matrixContext.indentity();
         s.matrixContext.perspective(45, s.width/s.height, 0.01, 100);
@@ -68,7 +77,6 @@ export class App{
         s.matrixContext.rotate(angle, 0, 1, 0);
         s.matrixContext.translate(0, 0.5, 0)
 
-        // s.matrixContext.translate(0, 0, -20)
         //全局变量
         let center = new Vec3(-0.4, -0.75, 0.2);
         let oldCenter = center;
@@ -78,15 +86,89 @@ export class App{
         let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
         mvp.transpose();//需要转置下
         console.log(mvp.data)
+        
+        // gl.clearColor(0, 0, 0, 1);
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        //水的信息（包含位置，速度， 法向量）waterInfo
+        let waterInfoPlan = new PlaneMesh();
+        let filter = !!gl.getExtension('OES_texture_float_linear')?TextureMagFilter.LINEAR:TextureMagFilter.NEAREST;
+        let waterInfoTexure1:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
+        let waterInfoTexure2:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
+        
+        /** */
+        //添加水面的波纹
+        let waterDropData:ShaderParamData = {
+            aPos:new GLArray(waterInfoPlan.vertext),
+            uTexture:waterInfoTexure1,
+            uStrength:0.05,//0.01,
+            uRadius:0.03,//0.03,
+            uCenter:new Vec2(0, 0),//x, z
+            indexs:new GLArray(waterInfoPlan.indexs)
+        }
+        let waterDropProgram = new WebGL(s._gl, waterInfo, waterInfoDropFrag);
+        waterDropProgram.resize(s.width, s.height)
+        waterDropProgram.bindData(waterDropData);
+        waterDropProgram.enableUseFrameBuffer(waterInfoTexure2);
+        waterDropProgram.onRenderFun(()=>{
+            waterInfoTexure1.swapTexture(waterInfoTexure2)
+        })
+        // waterDropProgram.render();
+        function addDrop(x, y){
+            let pos = waterDropData.uCenter as Vec2;
+            pos.set(0, x);
+            pos.set(1, y);
+            waterDropProgram.render();
+        }
+        for (var i = 0; i < 20; i++) {
+            addDrop(Math.random() * 2 - 1, Math.random() * 2 - 1);
+        }
 
-        // let cube = new CubeMap();
-        // cube.negX = s._images["xneg"];
-        // cube.posX = s._images["xpos"];
-        // cube.negY = s._images["yneg"];
-        // cube.posY = s._images["ypos"];
-        // cube.negZ = s._images["zneg"];
-        // cube.posZ = s._images["zpos"];
+        //更新水面的信息
+        let waterUpdateData:ShaderParamData = {
+            aPos:new GLArray(waterInfoPlan.vertext),
+            uTexture:waterInfoTexure1,
+            uSize:new GLArray([1/waterInfoTexure1.width, 1/waterInfoTexure1.height]),
+            indexs:new GLArray(waterInfoPlan.indexs)
+        }
+        let waterUpdateProgram = new WebGL(s._gl, waterInfo, waterInfoUpdateFrag);
+        waterUpdateProgram.resize(s.width, s.height)
+        waterUpdateProgram.bindData(waterUpdateData)
+        waterUpdateProgram.enableUseFrameBuffer(waterInfoTexure2);
+        waterUpdateProgram.onRenderFun(()=>{
+            waterInfoTexure1.swapTexture(waterInfoTexure2)
+        })
+        s._programs.push(waterUpdateProgram)
 
+        
+        //更新水面的法线
+        let waterNormalData:ShaderParamData = {
+            aPos:new GLArray(waterInfoPlan.vertext),
+            uTexture:waterInfoTexure1,
+            uSize:new GLArray([1/waterInfoTexure1.width, 1/waterInfoTexure1.height]),
+            indexs:new GLArray(waterInfoPlan.indexs)
+        }
+        let waterNormalProgram = new WebGL(s._gl, waterInfo, waterInfoNormalFrag);
+        waterNormalProgram.resize(s.width, s.height)
+        waterNormalProgram.bindData(waterNormalData)
+        waterNormalProgram.enableUseFrameBuffer(waterInfoTexure2);
+        waterNormalProgram.onRenderFun(()=>{
+            waterInfoTexure1.swapTexture(waterInfoTexure2)
+        })
+        s._programs.push(waterNormalProgram)
+
+        //test
+        let waterTestlData:ShaderParamData = {
+            aPos:new GLArray(waterInfoPlan.vertext),
+            uTexture:waterInfoTexure1,
+            uMat:mvp,
+            uSize:new GLArray([1/waterInfoTexure1.width, 1/waterInfoTexure1.height]),
+            indexs:new GLArray(waterInfoPlan.indexs)
+        }
+        let waterTestlProgram = new WebGL(s._gl, testVert, testFrag);
+        waterTestlProgram.resize(s.width, s.height)
+        waterTestlProgram.bindData(waterTestlData)
+        // waterTestlProgram.render();
+        s._programs.push(waterTestlProgram)
 
         //水池
         let cubeMesh = new CubeMesh();
@@ -96,7 +178,7 @@ export class App{
             uMat:mvp,
             uSphereCenter:center,
             uSphereRadius:radius,
-            // uCube:cube,
+            uWater:waterInfoTexure1,
             uTiles:tiles,
             indexs:new GLArray(cubeMesh.indexs),
             drawType:DrawType.TRIANGLES,
@@ -126,6 +208,7 @@ export class App{
         let waterData:ShaderParamData = {
             aPos:new GLArray(waterMesh.vertext),
             uMat:mvp,
+            uWater:waterInfoTexure1,
             indexs:new GLArray(waterMesh.indexs),
             drawType:DrawType.TRIANGLES
         }
@@ -142,8 +225,6 @@ export class App{
         let s = this;
         let gl = s._gl;
         gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].render();
         }

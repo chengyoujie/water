@@ -7,7 +7,7 @@ import { GLArray } from "../utils/GLArray";
 import { Log } from "../utils/Log";
 import { CubeMap } from "./CubeMap";
 import { Texture } from "./Texture";
-import { DrawType, ShaderEnableType, ShaderType, TextureTarget } from "./WebGLInterface";
+import { ClearBufferMask, DrawType, ShaderEnableType, ShaderType, TextureTarget } from "./WebGLInterface";
 
 
 
@@ -21,9 +21,9 @@ export class WebGL implements ICanBindTexture{
     /**索引数组数据 */
     private _indexs:IndexsData = {data:null, count:0, buff:null};
     /**shader 中用到的uniform 属性 */
-    private _unifrom:{[name:string]:UniformData} = {};
-    /**界面尺寸是否发生变化 */
-    private _sizeChange = false;
+    public _unifrom:{[name:string]:UniformData} = {};
+    // /**界面尺寸是否发生变化 */
+    // private _sizeChange = false;
     /**shader 的数据*/
     private _renderData:ShaderParamData;
     // ---帧缓存相关
@@ -35,6 +35,13 @@ export class WebGL implements ICanBindTexture{
     private _frameRenderBuffer:WebGLRenderbuffer;
     /**帧缓存的texture */
     private _frameTexture:Texture;
+    /**frame的宽度 */
+    private _frameWidth:number = 0;
+    /**frame的高度 */
+    private _frameHeight:number = 0;
+
+    /**渲染完成后的回调 */
+    private _onRenderEndFun:Function;
 
 
     private _width:number=800;
@@ -168,25 +175,31 @@ export class WebGL implements ICanBindTexture{
         gl.useProgram(s._program);
         if(s._renderData.enable){
             for(let i=0; i<s._renderData.enable.length; i++)gl.enable(s._renderData.enable[i]);
-        }else{
-            gl.enable(ShaderEnableType.DEPTH_TEST);
         }
         let textureIdx = 0;
         if(s._useFrameBuffer){//使用帧缓存
             if(!s._frameBuffer)
             {
                 s.initFrameBuffer();
-                textureIdx ++;
             }
             gl.bindFramebuffer(gl.FRAMEBUFFER, s._frameBuffer);
-            gl.viewport(0, 0, s._frameTexture.width, s._frameTexture.height);
-            gl.clearColor(0.0, 0.4, 0.6, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, s._frameRenderBuffer);
+            if(s._frameTexture.width != s._frameWidth || s._frameTexture.height != s._frameHeight){
+                s._frameWidth = s._frameTexture.width;
+                s._frameHeight = s._frameTexture.height;
+                gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, s._frameWidth, s._frameHeight);
+            }
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s._frameTexture.texture, 0);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, s._frameRenderBuffer);
+            // textureIdx ++;
+            gl.viewport(0, 0, s._frameWidth, s._frameHeight);
         }else{
             gl.viewport(0, 0, s._width, s._height)
         }
-        if(s._sizeChange){
-            s.handleSizeChange();
+        if(s._renderData.clearn){
+            let data=0;
+            for(let i=0; i<s._renderData.clearn.length; i++)data = data | s._renderData.clearn[i];
+            gl.clear(data);
         }
         let activeAttribute = gl.getProgramParameter(s._program, gl.ACTIVE_ATTRIBUTES);
         
@@ -258,8 +271,6 @@ export class WebGL implements ICanBindTexture{
         gl.drawElements(drawType, s._indexs.count, gl.UNSIGNED_BYTE, 0);
         if(s._renderData.enable){
             for(let i=0; i<s._renderData.enable.length; i++)gl.disable(s._renderData.enable[i]);
-        }else{
-            gl.disable(ShaderEnableType.DEPTH_TEST);
         }
         gl.bindTexture(gl.TEXTURE_2D, null);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -267,6 +278,9 @@ export class WebGL implements ICanBindTexture{
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.useProgram(null);
+        if(s._onRenderEndFun){
+            s._onRenderEndFun();
+        }
     }
 
     /**
@@ -283,6 +297,7 @@ export class WebGL implements ICanBindTexture{
         if(!s._frameTexture){
             s._frameTexture = new Texture(gl, 1024, 1024)
         }
+        s._frameTexture.bindTexture(gl, gl.TEXTURE_2D);
         //缓冲区
         s._frameRenderBuffer = gl.createRenderbuffer();
         if(!s._frameRenderBuffer){
@@ -291,6 +306,8 @@ export class WebGL implements ICanBindTexture{
         }
         gl.bindRenderbuffer(gl.RENDERBUFFER, s._frameRenderBuffer);
         gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, s._frameTexture.width, s._frameTexture.height);
+        s._frameWidth = s._frameTexture.width;
+        s._frameHeight = s._frameTexture.height;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, s._frameBuffer);
         //将纹理指定为镇缓冲区的颜色关联对象
@@ -317,7 +334,7 @@ export class WebGL implements ICanBindTexture{
         let s = this;
         s._useFrameBuffer = true;
         s._frameTexture = frameTexture || s._frameTexture;
-        
+        // s._sizeChange = true;
     }
 
     /**
@@ -326,6 +343,11 @@ export class WebGL implements ICanBindTexture{
     public disbaleFrameBuffer(){
         let s = this;
         s._useFrameBuffer = false;
+    }
+
+    public onRenderFun(value:Function){
+        let s = this;
+        s._onRenderEndFun = value;
     }
 
     /**
@@ -351,20 +373,20 @@ export class WebGL implements ICanBindTexture{
         s._width = width;
         s._height = height;
         // s._frameTexture.resize(s._width, s._height);
-        s._sizeChange = true;
+        // s._sizeChange = true;
     }
 
-    private handleSizeChange(){
-        let s = this;
-        let gl = s._gl;
-        if(s._useFrameBuffer){
-            s._frameTexture.bindTexture(gl, TextureTarget.TEXTURE_2D);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, s._frameTexture.width, s._frameTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-            gl.bindRenderbuffer(gl.RENDERBUFFER, s._frameRenderBuffer);
-            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, s._frameTexture.width, s._frameTexture.height);
-        }
-        s._sizeChange = false;
-    }
+    // private handleSizeChange(){
+    //     let s = this;
+    //     let gl = s._gl;
+    //     if(s._useFrameBuffer){
+    //         s._frameTexture.bindTexture(gl, TextureTarget.TEXTURE_2D);
+    //         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, s._frameTexture.width, s._frameTexture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    //         gl.bindRenderbuffer(gl.RENDERBUFFER, s._frameRenderBuffer);
+    //         gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, s._frameTexture.width, s._frameTexture.height);
+    //     }
+    //     s._sizeChange = false;
+    // }
     
 
     /**创建Buffer */
@@ -500,8 +522,10 @@ export interface ShaderParamData{
     indexs:GLArray;
     /**绘制类型 默认使用TRIANGLES*/
     drawType?:DrawType;
-    /**绘制时enable的参数  默认为DEPTH_TEST  ,[]表示什么也不用 */
+    /**绘制时enable的参数  默认为空*/
     enable?:ShaderEnableType[],
+    /**绘制时是否执行clearn */
+    clearn?:ClearBufferMask[],
     /**以a_xxx开头的顶点坐标 */
     [vertext:`${"a_"|"a"}${string}`]:GLArray|number|Matrix<any>|Vec;
     /**以u_xxx开头的全局变量 */

@@ -77,6 +77,7 @@ export class CubeMap implements ICanBindTexture{
             return null;
         }
         gl.bindTexture(target, s._texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         if(s._textureChange){   
             let gl = s._gl;
             for(let i=0; i<s._cubeList.length; i++)

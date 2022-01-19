@@ -4,6 +4,8 @@ uniform sampler2D uTiles;
 varying vec3 vCoord;
 uniform vec3 uSphereCenter;//圆的坐标
 uniform float uSphereRadius;//圆的半径
+uniform sampler2D uWater;
+const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);//水下面的颜色
 
 /**获取墙体的颜色*/
 vec3 getWallColor(vec3 point){
@@ -24,10 +26,15 @@ vec3 getWallColor(vec3 point){
     scale /= length(point);//池子的遮挡
     scale *= 1.0 - 0.9 / pow(length(point - uSphereCenter)/uSphereRadius, 4.0);//球体的遮挡
 
+    //z
     
     return wallColor*scale;
 }
 
 void main(){
+    vec4 info = texture2D(uWater, vCoord.xz*0.5+0.5);
     gl_FragColor = vec4(getWallColor(vCoord), 1.0);
+    if(vCoord.y<info.r){
+        gl_FragColor.rgb = underwaterColor*1.2;
+    }
 }
