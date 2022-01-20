@@ -39,6 +39,7 @@ export class App{
     private _mainCanvas:HTMLCanvasElement;
     private _gl:WebGLRenderingContext;
     private _programs:WebGL[] = [];
+    private _programsFrameBuff:WebGL[] = [];
     public matrixContext:MatrixContext;
     private _images:{[name:string]:TexImageSource} = {};
     
@@ -90,6 +91,7 @@ export class App{
 
         //水的信息（包含位置，速度， 法向量）waterInfo
         let waterInfoPlan = new PlaneMesh();
+        let hasDerivatives = !!gl.getExtension("OES_standard_derivatives");
         //Texure的Float 和 LINEAR 要设置下，否则显示效果有问题
         let filter = !!gl.getExtension('OES_texture_float_linear')?TextureMagFilter.LINEAR:TextureMagFilter.NEAREST;
         let waterInfoTexure1:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
@@ -97,6 +99,7 @@ export class App{
         let causticTexure:Texture = new Texture(gl, 1024, 1024);
         let waterSurfaceMesh = new PlaneMesh(10, 10);
         let tiles:Texture = new Texture(gl, tilesImg, {wrap:TextureWrapMode.REPEAT});
+        let cube = new CubeMap(gl, s._images["xpos"], s._images["xneg"], s._images["ypos"], s._images["ypos"], s._images["zpos"], s._images["zneg"])
         /** */
         //添加水面的波纹
         let waterDropData:ShaderParamData = {
@@ -138,7 +141,7 @@ export class App{
         waterUpdateProgram.onRenderFun(()=>{
             waterInfoTexure1.swapTexture(waterInfoTexure2)
         })
-        s._programs.push(waterUpdateProgram)
+        s._programsFrameBuff.push(waterUpdateProgram)
 
         
         //更新水面的法线
@@ -155,29 +158,34 @@ export class App{
         waterNormalProgram.onRenderFun(()=>{
             waterInfoTexure1.swapTexture(waterInfoTexure2)
         })
-        s._programs.push(waterNormalProgram)
+        s._programsFrameBuff.push(waterNormalProgram)
         
         //焦散
-        let causticData:ShaderParamData = {
-            aPos:new GLArray(waterSurfaceMesh.vertext),
-            indexs:new GLArray(waterSurfaceMesh.indexs),
-            uWater:waterInfoTexure1,
-            uLightDir:lightDir,
-            uSphereCenter:center,
-            uSphereRadius:radius,
-            clearn:[ClearBufferMask.COLOR_BUFFER_BIT]
+        if(hasDerivatives)
+        {
+            let causticData:ShaderParamData = {
+                aPos:new GLArray(waterSurfaceMesh.vertext),
+                indexs:new GLArray(waterSurfaceMesh.indexs),
+                uWater:waterInfoTexure1,
+                uLightDir:lightDir,
+                uSphereCenter:center,
+                uSphereRadius:radius,
+                drawType:DrawType.TRIANGLES,
+                clearn:[ClearBufferMask.COLOR_BUFFER_BIT]
+            }
+            let causticsProgram = new WebGL(s._gl, causticsVert, causticsFrag);
+            causticsProgram.resize(s.width, s.height)
+            causticsProgram.bindData(causticData)
+            causticsProgram.enableUseFrameBuffer(causticTexure);
+            s._programsFrameBuff.push(causticsProgram)
         }
-        let causticsProgram = new WebGL(s._gl, causticsVert, causticsFrag);
-        causticsProgram.resize(s.width, s.height)
-        causticsProgram.bindData(causticData)
-        causticsProgram.enableUseFrameBuffer(causticTexure);
-        s._programs.push(causticsProgram)
-        //test
+        
+        //test 测试显示
         // let waterTestlData:ShaderParamData = {
         //     aPos:new GLArray(waterInfoPlan.vertext),
-        //     uTexture:waterInfoTexure1,
+        //     uTexture:causticTexure,
         //     uMat:mvp,
-        //     uSize:new GLArray([1/waterInfoTexure1.width, 1/waterInfoTexure1.height]),
+        //     uSize:new GLArray([1/causticTexure.width, 1/causticTexure.height]),
         //     indexs:new GLArray(waterInfoPlan.indexs)
         // }
         // let waterTestlProgram = new WebGL(s._gl, testVert, testFrag);
@@ -199,13 +207,55 @@ export class App{
             uCaustic:causticTexure,
             indexs:new GLArray(cubeMesh.indexs),
             drawType:DrawType.TRIANGLES,
-            enable:[ShaderEnableType.CULL_FACE]
+            enable:[ShaderEnableType.CULL_FACE, ShaderEnableType.DEPTH_TEST]
         }
         let cubeProgram = new WebGL(s._gl, cubeVert, cubeFrag);
         cubeProgram.resize(s.width, s.height)
         cubeProgram.bindData(cubeData)
         s._programs.push(cubeProgram)
-
+        //水平面  上方
+        let waterSurfaceUpData:ShaderParamData = {
+            aPos:new GLArray(waterSurfaceMesh.vertext),
+            uMat:mvp,
+            uWater:waterInfoTexure1,
+            uEye:new Vec3(0, -0.5, 4),
+            uLightDir:lightDir,
+            uTiles:tiles,
+            uSphereCenter:center,
+            uSphereRadius:radius,
+            uSky:cube,
+            indexs:new GLArray(waterSurfaceMesh.indexs),
+            enable:[ShaderEnableType.CULL_FACE],
+            cullFace:CullFaceMode.FRONT,
+            drawType:DrawType.TRIANGLES
+        }
+        let waterSurfaceUpProgram = new WebGL(s._gl, waterSurfaceVert, waterSurfaceUpFrag);
+        waterSurfaceUpProgram.resize(s.width, s.height)
+        waterSurfaceUpProgram.bindData(waterSurfaceUpData)
+        s._programs.push(waterSurfaceUpProgram)
+        //水平面  下方
+        let waterSurfaceDownData:ShaderParamData = {
+            aPos:new GLArray(waterSurfaceMesh.vertext),
+            uMat:mvp,
+            uWater:waterInfoTexure1,
+            uEye:new Vec3(0, -0.5, 4),
+            uLightDir:lightDir,
+            uTiles:tiles,
+            uSphereCenter:center,
+            uSphereRadius:radius,
+            uSky:cube,
+            indexs:new GLArray(waterSurfaceMesh.indexs),
+            enable:[ShaderEnableType.CULL_FACE],
+            cullFace:CullFaceMode.BACK,
+            drawType:DrawType.TRIANGLES
+        }
+        let waterSurfaceDownProgram = new WebGL(s._gl, waterSurfaceVert, waterSurfaceDownFrag);
+        waterSurfaceDownProgram.resize(s.width, s.height)
+        waterSurfaceDownProgram.bindData(waterSurfaceDownData)
+        s._programs.push(waterSurfaceDownProgram)
+        
+        
+        
         //球体
         let sphereMesh = new SphereMesh(12);
         let sphereData:ShaderParamData = {
@@ -215,33 +265,13 @@ export class App{
             uSphereRadius:radius,
             uWater:waterInfoTexure1,
             indexs:new GLArray(sphereMesh.indexs),
-            drawType:DrawType.TRIANGLES
+            drawType:DrawType.TRIANGLES,
+            // enable:[ShaderEnableType.DEPTH_TEST]
         }
         let sphereProgram = new WebGL(s._gl, sphereVert, sphereFrag);
         sphereProgram.resize(s.width, s.height)
         sphereProgram.bindData(sphereData)
         s._programs.push(sphereProgram)
-        //水平面
-        let waterSurfaceData:ShaderParamData = {
-            aPos:new GLArray(waterSurfaceMesh.vertext),
-            uMat:mvp,
-            uWater:waterInfoTexure1,
-            uEye:new Vec3(0, -0.5, 4),
-            uLightDir:lightDir,
-            uTiles:tiles,
-            uSphereCenter:center,
-            uSphereRadius:radius,
-            uSky:new CubeMap(gl, xpos, xneg, ypos, ypos, zpos, zneg),
-            indexs:new GLArray(waterSurfaceMesh.indexs),
-            enable:[ShaderEnableType.CULL_FACE],
-            cullFace:CullFaceMode.BACK,
-            drawType:DrawType.TRIANGLES
-        }
-        let waterSurfaceProgram = new WebGL(s._gl, waterSurfaceVert, waterSurfaceDownFrag);
-        waterSurfaceProgram.resize(s.width, s.height)
-        waterSurfaceProgram.bindData(waterSurfaceData)
-        s._programs.push(waterSurfaceProgram)
-        
 
         s.update();
     }
@@ -250,9 +280,15 @@ export class App{
     private update(){
         let s = this;
         let gl = s._gl;
+        for(let i=0; i<s._programsFrameBuff.length; i++){
+            s._programsFrameBuff[i].render();
+        }
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].render();
         }
+        gl.disable(gl.DEPTH_TEST);
         requestAnimationFrame(this.update.bind(s));
     }
 

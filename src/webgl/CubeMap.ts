@@ -80,15 +80,15 @@ export class CubeMap implements ICanBindTexture{
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         if(s._textureChange){   
             let gl = s._gl;
-            for(let i=0; i<s._cubeList.length; i++)
-            {
-                gl.texImage2D(s._cubeList[i].pos, s._textureIdx, s._cubeList[i].format || gl.RGBA, s._cubeList[i].format || gl.RGBA, gl.UNSIGNED_BYTE, s._cubeList[i].img);
-            }
-            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, s._cubeParam.filterMag || s._cubeParam.filter || gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,  s._cubeParam.filterMig || s._cubeParam.filter || gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, s._cubeParam.wrapS || s._cubeParam.wrap || gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, s._cubeParam.wrapT || s._cubeParam.wrap || gl.CLAMP_TO_EDGE);
+            for(let i=0; i<s._cubeList.length; i++)
+            {
+                gl.texImage2D(s._cubeList[i].pos, s._textureIdx, s._cubeList[i].format || gl.RGBA, s._cubeList[i].format || gl.RGBA, gl.UNSIGNED_BYTE, s._cubeList[i].img);
+            }
+            gl.generateMipmap(gl.TEXTURE_2D);
             s._textureChange = false;
         }
         return s._texture;
