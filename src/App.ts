@@ -15,6 +15,7 @@ import waterSurfaceVert from "./shader/waterSurface.vert"
 import waterInfoDropFrag from "./shader/waterInfoDrop.frag"
 import waterInfoUpdateFrag from "./shader/waterInfoUpdate.frag"
 import waterInfoNormalFrag from "./shader/waterInfoNormal.frag"
+import waterInfoSpherelFrag from "./shader/waterInfoSphere.frag"
 import waterInfo from "./shader/waterInfo.vert"
 import xneg from "./res/xneg.jpg"
 import zneg from "./res/zneg.jpg"
@@ -160,6 +161,24 @@ export class App{
         })
         s._programsFrameBuff.push(waterNormalProgram)
         
+        //更新水面中球体的信息
+        let waterSphereData:ShaderParamData = {
+            aPos:new GLArray(waterInfoPlan.vertext),
+            uTexture:waterInfoTexure1,
+            uOldSphereCenter:oldCenter,//旧的圆心坐标
+            uNewSphereCenter:center,//新的圆心坐标
+            uSphereRadius:radius,//圆的半径
+            indexs:new GLArray(waterInfoPlan.indexs)
+        }
+        let waterSphereProgram = new WebGL(s._gl, waterInfo, waterInfoSpherelFrag);
+        waterSphereProgram.resize(s.width, s.height);
+        waterSphereProgram.bindData(waterSphereData);
+        waterSphereProgram.enableUseFrameBuffer(waterInfoTexure2);
+        waterSphereProgram.onRenderFun(()=>{
+            waterInfoTexure1.swapTexture(waterInfoTexure2);
+        })
+        s._programsFrameBuff.push(waterSphereProgram);
+
         //焦散
         if(hasDerivatives)
         {
@@ -183,7 +202,7 @@ export class App{
         //test 测试显示
         // let waterTestlData:ShaderParamData = {
         //     aPos:new GLArray(waterInfoPlan.vertext),
-        //     uTexture:causticTexure,
+        //     uTexture:waterInfoTexure1,
         //     uMat:mvp,
         //     uSize:new GLArray([1/causticTexure.width, 1/causticTexure.height]),
         //     indexs:new GLArray(waterInfoPlan.indexs)
@@ -204,7 +223,7 @@ export class App{
             uWater:waterInfoTexure1,
             uTiles:tiles,
             uLightDir:lightDir,
-            uCaustic:causticTexure,
+            uCaustics:causticTexure,
             indexs:new GLArray(cubeMesh.indexs),
             drawType:DrawType.TRIANGLES,
             enable:[ShaderEnableType.CULL_FACE, ShaderEnableType.DEPTH_TEST]
@@ -221,6 +240,7 @@ export class App{
             uEye:new Vec3(0, -0.5, 4),
             uLightDir:lightDir,
             uTiles:tiles,
+            uCausitcs:causticTexure,
             uSphereCenter:center,
             uSphereRadius:radius,
             uSky:cube,
@@ -241,6 +261,7 @@ export class App{
             uEye:new Vec3(0, -0.5, 4),
             uLightDir:lightDir,
             uTiles:tiles,
+            uCausitcs:causticTexure,
             uSphereCenter:center,
             uSphereRadius:radius,
             uSky:cube,
@@ -257,12 +278,14 @@ export class App{
         
         
         //球体
-        let sphereMesh = new SphereMesh(12);
+        let sphereMesh = new SphereMesh(15);
         let sphereData:ShaderParamData = {
             aPos:new GLArray(sphereMesh.vertext),
             uMat:mvp,
             uSphereCenter:center,
             uSphereRadius:radius,
+            uLightDir:lightDir,
+            uCaustics:causticTexure,
             uWater:waterInfoTexure1,
             indexs:new GLArray(sphereMesh.indexs),
             drawType:DrawType.TRIANGLES,

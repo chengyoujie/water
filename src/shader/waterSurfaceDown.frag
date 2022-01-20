@@ -1,16 +1,16 @@
 precision highp float;
-varying vec3 vCoord;
+varying vec3 vPosition;
 uniform samplerCube uSky;
 uniform vec3 uEye;
 uniform sampler2D uWater;
 const float IOR_AIR = 1.0;//空气的折射率
 const float IOR_WATER = 1.333;//水的折射率
 const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);//水下面的颜色
-uniform samplerCube uCube;
 uniform sampler2D uTiles;
 uniform vec3 uLightDir;
 uniform vec3 uSphereCenter;//圆的坐标
 uniform float uSphereRadius;//圆的半径
+uniform sampler2D uCausitcs;
 const float poolHeight = 1.0;//水池的高度
 
 //判断是否与球体相交
@@ -18,7 +18,7 @@ float intersectSphere(vec3 orgin, vec3 ray, vec3 sphereCenter, float sphereRadiu
     vec3 toSphere = orgin - sphereCenter;
     float a = dot(ray, ray);
     float b = 2.0 * dot(toSphere, ray);
-    float c = dot(toSphere, toSphere) - sphereRadius *sphereRadius;
+    float c = dot(toSphere, toSphere) - sphereRadius * sphereRadius;
     float discriminant = b*b - 4.0*a*c;//判别式
     if(discriminant > 0.0){
         float t = (-b - sqrt(discriminant)) / (2.0 * a);
@@ -32,7 +32,29 @@ vec3 getSphereColor(vec3 point){
     color *= 1.0 - 0.9/ pow((1.0 + uSphereRadius - abs(point.x)) / uSphereRadius, 3.0);
     color *= 1.0 - 0.9/ pow( (1.0 + uSphereRadius - abs(point.z)) / uSphereRadius, 3.0 );
     color *= 1.0 - 0.9/ pow((point.y + 1.0 + uSphereRadius) / uSphereRadius, 3.0);
+    //
+    vec3 sphereNormal = (point - uSphereCenter) / uSphereRadius;
+    vec3 refractedLight = refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR/ IOR_WATER);
+    float diffuse = max(0.0, dot(-refractedLight, sphereNormal)) * 0.5;
+    vec4 info = texture2D(uWater, point.xz * 0.5 + 0.5);
+    if(point.y < info.r){
+        vec4 caustic = texture2D(uCausitcs, 0.75 * (point.xz - point.y * refractedLight.xz/refractedLight.y) * 0.5 + 0.5);
+        diffuse *= caustic.r * 4.0;
+    }
+    color += diffuse;
     return color;
+}
+
+
+//
+vec2 intersectCube(vec3 origin, vec3 ray, vec3 cubeMin, vec3 cubeMax){
+    vec3 tMin = (cubeMin - origin) / ray;
+    vec3 tMax = (cubeMax - origin) / ray;
+    vec3 t1 = min(tMin, tMax);
+    vec3 t2 = max(tMin, tMax);
+    float tNear = max(max(t1.x, t1.y), t1.z);
+    float tFar = min(min(t2.x, t2.y), t2.z);
+    return vec2(tNear, tFar);
 }
 
 vec3 getWallColor(vec3 point){
@@ -51,19 +73,21 @@ vec3 getWallColor(vec3 point){
     }
     scale /= length(point);
     scale *= 1.0 - 0.9 / pow(length(point - uSphereCenter)/uSphereRadius, 4.0);
+    //
+    vec3 refractedLight = -refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR/IOR_WATER);
+    float diffuse = max(0.0, dot(refractedLight, normal));
+    vec4 info = texture2D(uWater, point.xz * 0.5 + 0.5);
+    if(point.y < info.r){
+        vec4 caustic = texture2D(uCausitcs, 0.75 * (point.xz - point.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5);
+        scale += diffuse * caustic.r * 2.0 * caustic.g;
+    }else{
+        vec2 t = intersectCube(point, refractedLight, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));
+        diffuse *= 1.0 / (1.0 + exp(-200.0 / (1.0 + 10.0 * (t.y - t.x)) * (point.y + refractedLight.y * t.y - 2.0/12.0)));
+        scale += diffuse * 0.5;
+    }
     return wallColor * scale;
 }
 
-//
-vec2 intersectCube(vec3 origin, vec3 ray, vec3 cubeMin, vec3 cubeMax){
-    vec3 tMin = (cubeMin - origin) / ray;
-    vec3 tMax = (cubeMax - origin) / ray;
-    vec3 t1 = min(tMin, tMax);
-    vec3 t2 = max(tMin, tMax);
-    float tNear = max(max(t1.x, t1.y), t1.z);
-    float tFar = min(min(t2.x, t2.y), t2.z);
-    return vec2(tNear, tFar);
-}
 
 vec3 getSurfaceRayColor(vec3 origin, vec3 ray, vec3 waterColor){
     vec3 color;
@@ -88,14 +112,14 @@ vec3 getSurfaceRayColor(vec3 origin, vec3 ray, vec3 waterColor){
 }
 
 void main(){
-    vec2 coord = vCoord.xy*0.5+0.5;
+    vec2 coord = vPosition.xz*0.5+0.5;
     vec4 info = texture2D(uWater, coord);
     for(int i=0; i<5; i++){
         coord += info.ba * 0.005;
         info = texture2D(uWater, coord);
     }
     vec3 normal = vec3(info.b, sqrt(1.0 - dot(info.ba, info.ba)), info.a  );
-    vec3 incomingRay = normalize(vCoord - uEye);
+    vec3 incomingRay = normalize(vPosition - uEye);
     normal = -normal;
 
     vec3 reflectedRay = reflect(incomingRay, normal);//发射光
@@ -103,8 +127,8 @@ void main(){
 
     float fresnel = mix(0.5, 1.0, pow(1.0-dot(normal , -incomingRay), 3.0));
 
-    vec3 reflectedColor = getSurfaceRayColor(vCoord, reflectedRay, underwaterColor);
-    vec3 refractedColor = getSurfaceRayColor(vCoord, refractedRay, vec3(1.0)) * vec3(0.8, 1.0, 1.0);
+    vec3 reflectedColor = getSurfaceRayColor(vPosition, reflectedRay, underwaterColor);
+    vec3 refractedColor = getSurfaceRayColor(vPosition, refractedRay, vec3(1.0)) * vec3(0.8, 1.0, 1.1);
 
     gl_FragColor = vec4(mix(reflectedColor, refractedColor, (1.0-fresnel)*length(refractedRay)), 1.0);
     // gl_FragColor = info;//vec4(0.25, 1.0, 1.25, 1.0);
