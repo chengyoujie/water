@@ -34,6 +34,7 @@ import { ClearBufferMask, CullFaceMode, DataType, DrawType, ShaderEnableType, Te
 import { Texture } from "./webgl/Texture";
 import { Vec2 } from "./math/Vec2";
 import { Raytracer } from "./swaming/Raytracer";
+import { Matrix4 } from "./math/Matrix4";
 
 export class App{
     public width:number;
@@ -49,7 +50,14 @@ export class App{
     private _sphereCenter:Vec3;
     private _sphereOldCenter:Vec3;
     private _sphereRadius:number;
-    
+
+    private _waterDropData:ShaderParamData;
+    private _waterDropProgram:WebGL;
+    private _angleX:number = 0;
+    private _angleY:number = 0;
+
+    private _mvpMatrix:Matrix4;
+
 
     constructor(mainCanvas:HTMLCanvasElement, width:number, height:number, ratio?:number){
         let s = this;
@@ -71,7 +79,6 @@ export class App{
             console.log(imgs)
         })
     }
-
     private init(){
         let s = this;
         let gl = s._gl;
@@ -82,10 +89,9 @@ export class App{
         s.matrixContext.status = MatrixStatusType.ModelView;
 
         s.matrixContext.indentity();
-        let angle = 0;
         s.matrixContext.translate(0, 0, -4);
-        s.matrixContext.rotate(angle, 1, 0, 0);
-        s.matrixContext.rotate(angle, 0, 1, 0);
+        s.matrixContext.rotate(s._angleX, 1, 0, 0);
+        s.matrixContext.rotate(s._angleY, 0, 1, 0);
         s.matrixContext.translate(0, 0.5, 0)
 
         //全局变量
@@ -94,8 +100,8 @@ export class App{
         s._sphereRadius = 0.25;
         let lightDir = new Vec3(2.0, 2.0, -1.0);
 
-        let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
-        mvp.transpose();//需要转置下 
+        s._mvpMatrix = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
+        s._mvpMatrix.transpose();//需要转置下 
 
         //水的信息（包含位置，速度， 法向量）waterInfo
         let waterInfoPlan = new PlaneMesh();
@@ -110,7 +116,7 @@ export class App{
         let cube = new CubeMap(gl, s._images["xpos"], s._images["xneg"], s._images["ypos"], s._images["ypos"], s._images["zpos"], s._images["zneg"])
         /** */
         //添加水面的波纹
-        let waterDropData:ShaderParamData = {
+        s._waterDropData = {
             aPos:new GLArray(waterInfoPlan.vertext),
             uTexture:waterInfoTexure1,
             uStrength:0.01,//0.01,
@@ -118,21 +124,16 @@ export class App{
             uCenter:new Vec2(0, 0),//x, z
             indexs:new GLArray(waterInfoPlan.indexs)
         }
-        let waterDropProgram = new WebGL(s._gl, waterInfo, waterInfoDropFrag);
-        waterDropProgram.resize(s.width, s.height)
-        waterDropProgram.bindData(waterDropData);
-        waterDropProgram.enableUseFrameBuffer(waterInfoTexure2);
-        waterDropProgram.onRenderFun(()=>{
+        s._waterDropProgram = new WebGL(s._gl, waterInfo, waterInfoDropFrag);
+        s._waterDropProgram.resize(s.width, s.height)
+        s._waterDropProgram.bindData(s._waterDropData);
+        s._waterDropProgram.enableUseFrameBuffer(waterInfoTexure2);
+        s._waterDropProgram.onRenderFun(()=>{
             waterInfoTexure1.swapTexture(waterInfoTexure2)
         })
-        function addDrop(x, y){
-            let pos = waterDropData.uCenter as Vec2;
-            pos.set(0, x);
-            pos.set(1, y);
-            waterDropProgram.render();
-        }
+        
         for (var i = 0; i < 20; i++) {
-            addDrop(Math.random() * 2 - 1, Math.random() * 2 - 1);
+            s.addDrop(Math.random() * 2 - 1, Math.random() * 2 - 1, 0.03, 0.01);
         }
 
         //更新水面的信息
@@ -224,7 +225,7 @@ export class App{
         cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点索引
         let cubeData:ShaderParamData = {
             aPos:new GLArray(cubeMesh.vertext),
-            uMat:mvp,
+            uMat:s._mvpMatrix,
             uSphereCenter:s._sphereCenter,
             uSphereRadius:s._sphereRadius,
             uWater:waterInfoTexure1,
@@ -242,7 +243,7 @@ export class App{
         //水平面  上方
         let waterSurfaceUpData:ShaderParamData = {
             aPos:new GLArray(waterSurfaceMesh.vertext),
-            uMat:mvp,
+            uMat:s._mvpMatrix,
             uWater:waterInfoTexure1,
             uEye:new Vec3(0, -0.5, 4),
             uLightDir:lightDir,
@@ -263,7 +264,7 @@ export class App{
         //水平面  下方
         let waterSurfaceDownData:ShaderParamData = {
             aPos:new GLArray(waterSurfaceMesh.vertext),
-            uMat:mvp,
+            uMat:s._mvpMatrix,
             uWater:waterInfoTexure1,
             uEye:new Vec3(0, -0.5, 4),
             uLightDir:lightDir,
@@ -288,7 +289,7 @@ export class App{
         let sphereMesh = new SphereMesh(15);
         let sphereData:ShaderParamData = {
             aPos:new GLArray(sphereMesh.vertext),
-            uMat:mvp,
+            uMat:s._mvpMatrix,
             uSphereCenter:s._sphereCenter,
             uSphereRadius:s._sphereRadius,
             uLightDir:lightDir,
@@ -305,6 +306,16 @@ export class App{
         s.update();
     }
 
+    private addDrop(x:number, y:number, streng:number, radius:number){
+        let s = this;
+        let pos = s._waterDropData.uCenter as Vec2;
+        pos.set(0, x);
+        pos.set(1, y);
+        s._waterDropData.uStrength = streng;
+        s._waterDropData.uRadius = radius;
+        s._waterDropProgram.render();
+    }
+
 
     private update(){
         let s = this;
@@ -314,7 +325,22 @@ export class App{
         }
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.enable(gl.DEPTH_TEST);
+        
+        s.matrixContext.indentity();
+        s.matrixContext.translate(0, 0, -4);
+        s.matrixContext.rotate(-s._angleX, 1, 0,0);
+        s.matrixContext.rotate(-s._angleY, 0, 1, 0);
+        s.matrixContext.translate(0, 0.5, 0);
+
+        let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
+        mvp.transpose();//需要转置下 
+        s._mvpMatrix.copy(mvp)
+
+        // console.log("angleX: "+s._angleX+" angleY: "+s._angleY);
+        // console.log(mvp.toString())
+
         for(let i=0; i<s._programs.length; i++){
+            if(s._programs[i].renderData["uMat"])s._programs[i].renderData["uMat"] = mvp;
             s._programs[i].render();
         }
         gl.disable(gl.DEPTH_TEST);
@@ -355,7 +381,7 @@ export class App{
             s._prevHit = sphereHitTest.hit;
             s._planeNormal = tracer.getRayForPixel(s.width/2, s.height/2).negative();
             console.log("点击球")
-        }else if(Math.abs(pointOnPlane.get(0))<1 && Math.abs(pointOnPlane.get(3))<1 ){
+        }else if(Math.abs(pointOnPlane.get(0))<1 && Math.abs(pointOnPlane.get(2))<1 ){
             s._touchTarget = TouchTarget.Water;
             s.onToucheMove(mouseX, mouseY);
             console.log("点击水面")
@@ -367,21 +393,46 @@ export class App{
 
     public onToucheMove(mouseX:number, mouseY:number){
         let s = this;
+        let tracer:Raytracer;
+        let ray:Vec3;
         switch(s._touchTarget){
             case TouchTarget.Water:
-                
+                tracer = new Raytracer(s._gl, s.matrixContext);
+                ray = tracer.getRayForPixel(mouseX*s.ratio, mouseY*s.ratio);
+                let pointOnPlane = tracer.eye.clone().add(ray.clone().multiply(-tracer.eye.get(1) / ray.get(1)));
+                s.addDrop(pointOnPlane.get(0), pointOnPlane.get(2), 0.03, 0.01);
+            break;
+            case TouchTarget.Sphere:
+                tracer = new Raytracer(s._gl, s.matrixContext);
+                ray = tracer.getRayForPixel(mouseX*s.ratio, mouseY*s.ratio);
+                let t = -s._planeNormal.clone().dot(tracer.eye.clone().subtract(s._prevHit)) / s._planeNormal.clone().dot(ray);
+                let nextHit = tracer.eye.clone().add(ray.clone().multiply(t)) as Vec3;
+                s._sphereCenter.add(nextHit.clone().subtract(s._prevHit));
+                s._sphereCenter.set(0, Math.max(s._sphereRadius-1, Math.min(1-s._sphereRadius, s._sphereCenter.get(0))));
+                s._sphereCenter.set(1, Math.max(s._sphereRadius-1, Math.min(10, s._sphereCenter.get(1))));
+                s._sphereCenter.set(2, Math.max(s._sphereRadius-1, Math.min(1-s._sphereRadius, s._sphereCenter.get(2))));
+                s._prevHit = nextHit;
+            break;
+            case TouchTarget.Cube:
+                s._angleY -= mouseX - s._oldTouchX;
+                s._angleX -= mouseY - s._oldTouchY;
+                s._angleX = Math.max(-89.999, Math.min(89.9999, s._angleX));
             break;
         }
+        s._oldTouchX = mouseX;
+        s._oldTouchY = mouseY;
     }
 
     public onToucheEnd(){
-
+        let s = this;
+        s._touchTarget = TouchTarget.None;
     }
 }
 
 const enum TouchTarget{
-    Cube = 0,
-    Water = 1,
-    Sphere = 2,
+    None = 0,
+    Cube = 1,
+    Water = 2,
+    Sphere = 3,
 
 }

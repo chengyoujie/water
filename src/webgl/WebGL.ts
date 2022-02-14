@@ -165,6 +165,10 @@ export class WebGL implements ICanBindTexture{
         }
     }
 
+    public get renderData(){
+        return this._renderData;
+    }
+
 
     /**刷新数据 */
     public render(){

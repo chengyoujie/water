@@ -40,12 +40,12 @@ document.ontouchend = function(e:TouchEvent){
 }
 //网页上的event
 document.onmouseup = function(e:MouseEvent){
-    e.preventDefault();
-    if(app)app.onTouchStart(e.pageX, e.pageY);
+    if(app)app.onToucheEnd();
 }
 document.onmousemove = function(e:MouseEvent){
     if(app)app.onToucheMove(e.pageX, e.pageY);
 }
 document.onmousedown = function(e:MouseEvent){
-    if(app)app.onToucheEnd();
+    e.preventDefault();
+    if(app)app.onTouchStart(e.pageX, e.pageY);
 }
