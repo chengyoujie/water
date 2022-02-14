@@ -6,9 +6,13 @@ export abstract class Vec{
 
     protected _data:number[] = [];
 
+    public key = 0;
+    private static KEY = 0;
+
     constructor(size:number){
         this._size = size;
-        Vec._vecDic[size] = this;
+        this.key = Vec.KEY;
+        Vec.KEY ++;
     }
 
     /**
@@ -158,7 +162,7 @@ export abstract class Vec{
         let result = 0;
         for(let i=0; i<s._size; i++)
         {
-            result += s._size[i]*s._size[i];
+            result += s._data[i]*s._data[i];
         }
         return Math.sqrt(result);
     }
@@ -219,14 +223,42 @@ export abstract class Vec{
         return this._size;
     }
 
-    private static _vecDic:{[size:number]:Vec} = {};
+    private static _vecDic:{[size:number]:{new(...args):Vec}} = {};
     /**
      * 获取对应维度的向量
      * @param size 
      * @returns 
      */
     public static get(size:number){
-        return Vec._vecDic[size];
+        let cls = Vec._vecDic[size];
+        return new cls();
+    }
+
+    public static regist(size:number, cls:{new(...args):Vec}){
+        Vec._vecDic[size] = cls;
+    }
+
+    
+    public static lerp<T extends Vec>(a:T, b:T, fraction:number):T{
+        return b.clone().subtract(a).multiply(fraction).add(a) as T;
+    }
+
+    public static min<T extends Vec>(a:T, b:T):T{
+        let size = a.size;
+        let result = Vec.get(size);
+        for(let i=0; i<size; i++){
+            result.data[i] = Math.min(a.data[i], b.data[i]);
+        }
+        return result as T;
+    }
+
+    public static max<T extends Vec>(a:T, b:T):T{
+        let size = a.size;
+        let result = Vec.get(size);
+        for(let i=0; i<size; i++){
+            result.data[i] = Math.max(a.data[i], b.data[i]);
+        }
+        return result as T;
     }
 
 }

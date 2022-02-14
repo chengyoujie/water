@@ -11,3 +11,4 @@ export class Vec4 extends Vec{
         s._data[3] = w;
     }
 }
+Vec.regist(4, Vec4);

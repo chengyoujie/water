@@ -1,4 +1,4 @@
-precision mediump float;
+precision highp float;
 
 uniform sampler2D uTexture;
 uniform vec2 uSize;//计算平均振幅时，找相邻多远位置的点

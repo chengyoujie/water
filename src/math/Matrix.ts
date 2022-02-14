@@ -85,18 +85,23 @@ export abstract class Matrix<T extends Matrix<any>>{
      * @param vec 
      * @returns 
      */
-    transformPoint(vec:Vec){
+    transformPoint<T extends Vec>(vec:T):T{
         let s = this;
-        if(s.size != vec.size){
-            Log.warn("矩阵与向量不同size 不能相乘 matrix.size:"+s.size+" vec.size:"+vec.size);
+        if(s.size-1 != vec.size){
+            Log.warn("矩阵与向量不同size 不能相乘 matrix.size:"+s.size+" vec.size:"+vec.size+"(需要vec的size:"+(s.size-1)+")");
             return;
         }
-        let result:Vec = Vec.get(s.size);
+        let result:T = Vec.get(s.size-1) as T;
         let idx:number = 0;
         for(let i=0; i<s._size; i++){
             let vecValue = 0;
-            for(let j=0; j<s._size; j++){
-                vecValue += s._data[idx]*vec.get(j);
+            for(let j=0; j< s._size; j++){
+                if(j==s._size-1)
+                {
+                    vecValue += s._data[idx];
+                }else{
+                    vecValue += s._data[idx]*vec.get(j);
+                }
                 idx ++;
             }
             if(i==s._size-1){//最后一行

@@ -33,6 +33,7 @@ import { Vec3 } from "./math/Vec3";
 import { ClearBufferMask, CullFaceMode, DataType, DrawType, ShaderEnableType, TextureMagFilter, TextureMinFilter, TextureWrapMode } from "./webgl/WebGLInterface";
 import { Texture } from "./webgl/Texture";
 import { Vec2 } from "./math/Vec2";
+import { Raytracer } from "./swaming/Raytracer";
 
 export class App{
     public width:number;
@@ -43,13 +44,19 @@ export class App{
     private _programsFrameBuff:WebGL[] = [];
     public matrixContext:MatrixContext;
     private _images:{[name:string]:TexImageSource} = {};
+    public ratio = 1;
+    //渲染变量
+    private _sphereCenter:Vec3;
+    private _sphereOldCenter:Vec3;
+    private _sphereRadius:number;
     
 
-    constructor(mainCanvas:HTMLCanvasElement, width:number, height:number){
+    constructor(mainCanvas:HTMLCanvasElement, width:number, height:number, ratio?:number){
         let s = this;
-        s.matrixContext = new MatrixContext();
         s._mainCanvas = mainCanvas;
+        s.ratio = ratio ||1;
         s._gl = s._mainCanvas.getContext("webgl");
+        s.matrixContext = new MatrixContext(s._gl);
         s.resize(width, height);
     }
 
@@ -76,15 +83,15 @@ export class App{
 
         s.matrixContext.indentity();
         let angle = 0;
-        s.matrixContext.translate(0, 0, -6);
+        s.matrixContext.translate(0, 0, -4);
         s.matrixContext.rotate(angle, 1, 0, 0);
         s.matrixContext.rotate(angle, 0, 1, 0);
         s.matrixContext.translate(0, 0.5, 0)
 
         //全局变量
-        let center = new Vec3(-0.4, -0.75, 0.2);
-        let oldCenter = center;
-        let radius = 0.25;
+        s._sphereCenter = new Vec3(-0.4, -0.75, 0.2);
+        s._sphereOldCenter = s._sphereCenter.clone() as Vec3;
+        s._sphereRadius = 0.25;
         let lightDir = new Vec3(2.0, 2.0, -1.0);
 
         let mvp = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
@@ -165,9 +172,9 @@ export class App{
         let waterSphereData:ShaderParamData = {
             aPos:new GLArray(waterInfoPlan.vertext),
             uTexture:waterInfoTexure1,
-            uOldSphereCenter:oldCenter,//旧的圆心坐标
-            uNewSphereCenter:center,//新的圆心坐标
-            uSphereRadius:radius,//圆的半径
+            uOldSphereCenter:s._sphereOldCenter,//旧的圆心坐标
+            uNewSphereCenter:s._sphereCenter,//新的圆心坐标
+            uSphereRadius:s._sphereRadius,//圆的半径
             indexs:new GLArray(waterInfoPlan.indexs)
         }
         let waterSphereProgram = new WebGL(s._gl, waterInfo, waterInfoSpherelFrag);
@@ -187,8 +194,8 @@ export class App{
                 indexs:new GLArray(waterSurfaceMesh.indexs),
                 uWater:waterInfoTexure1,
                 uLightDir:lightDir,
-                uSphereCenter:center,
-                uSphereRadius:radius,
+                uSphereCenter:s._sphereCenter,
+                uSphereRadius:s._sphereRadius,
                 drawType:DrawType.TRIANGLES,
                 clearn:[ClearBufferMask.COLOR_BUFFER_BIT]
             }
@@ -218,8 +225,8 @@ export class App{
         let cubeData:ShaderParamData = {
             aPos:new GLArray(cubeMesh.vertext),
             uMat:mvp,
-            uSphereCenter:center,
-            uSphereRadius:radius,
+            uSphereCenter:s._sphereCenter,
+            uSphereRadius:s._sphereRadius,
             uWater:waterInfoTexure1,
             uTiles:tiles,
             uLightDir:lightDir,
@@ -241,8 +248,8 @@ export class App{
             uLightDir:lightDir,
             uTiles:tiles,
             uCausitcs:causticTexure,
-            uSphereCenter:center,
-            uSphereRadius:radius,
+            uSphereCenter:s._sphereCenter,
+            uSphereRadius:s._sphereRadius,
             uSky:cube,
             indexs:new GLArray(waterSurfaceMesh.indexs),
             enable:[ShaderEnableType.CULL_FACE],
@@ -262,8 +269,8 @@ export class App{
             uLightDir:lightDir,
             uTiles:tiles,
             uCausitcs:causticTexure,
-            uSphereCenter:center,
-            uSphereRadius:radius,
+            uSphereCenter:s._sphereCenter,
+            uSphereRadius:s._sphereRadius,
             uSky:cube,
             indexs:new GLArray(waterSurfaceMesh.indexs),
             enable:[ShaderEnableType.CULL_FACE],
@@ -282,14 +289,13 @@ export class App{
         let sphereData:ShaderParamData = {
             aPos:new GLArray(sphereMesh.vertext),
             uMat:mvp,
-            uSphereCenter:center,
-            uSphereRadius:radius,
+            uSphereCenter:s._sphereCenter,
+            uSphereRadius:s._sphereRadius,
             uLightDir:lightDir,
             uCaustics:causticTexure,
             uWater:waterInfoTexure1,
             indexs:new GLArray(sphereMesh.indexs),
-            drawType:DrawType.TRIANGLES,
-            // enable:[ShaderEnableType.DEPTH_TEST]
+            // drawType:DrawType.LINES,
         }
         let sphereProgram = new WebGL(s._gl, sphereVert, sphereFrag);
         sphereProgram.resize(s.width, s.height)
@@ -317,18 +323,65 @@ export class App{
 
     public resize(width:number, height:number){
         let s = this;
-        s.width = 800;//width; 
-        s.height = 800;//height;
-        s._mainCanvas.width = width;
-        s._mainCanvas.height = height;
+        width = 800;
+        height = 800;
+        s.width = width*s.ratio;//width; 
+        s.height = height*s.ratio;//height;
+        s._mainCanvas.width = s.width;
+        s._mainCanvas.height = s.height;
         s._mainCanvas.style.width = width + "px";
         s._mainCanvas.style.height = height + "px";
         s._gl.viewport(0, 0, s.width, s.height);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].resize(s.width, s.height)
         }
-        console.log("resize");
+    }
 
+    private _oldTouchX:number = 0;
+    private _oldTouchY:number = 0;
+    private _touchTarget:TouchTarget;
+    private _prevHit:Vec3;
+    private _planeNormal:Vec3;
+    public onTouchStart(mouseX:number, mouseY:number){
+        let s = this;;
+        s._oldTouchX = mouseX;
+        s._oldTouchY = mouseY;
+        let tracer = new Raytracer(s._gl, s.matrixContext);
+        let ray = tracer.getRayForPixel(mouseX*s.ratio, mouseY*s.ratio);
+        let pointOnPlane = tracer.eye.clone().add(ray.clone().multiply(-tracer.eye.get(1) / ray.get(1)));
+        let sphereHitTest = Raytracer.hitTestSphere(tracer.eye, ray, s._sphereCenter, s._sphereRadius);
+        if(sphereHitTest){
+            s._touchTarget = TouchTarget.Sphere;
+            s._prevHit = sphereHitTest.hit;
+            s._planeNormal = tracer.getRayForPixel(s.width/2, s.height/2).negative();
+            console.log("点击球")
+        }else if(Math.abs(pointOnPlane.get(0))<1 && Math.abs(pointOnPlane.get(3))<1 ){
+            s._touchTarget = TouchTarget.Water;
+            s.onToucheMove(mouseX, mouseY);
+            console.log("点击水面")
+        }else{
+            console.log("点击cube")
+            s._touchTarget = TouchTarget.Cube;
+        }
+    }
+
+    public onToucheMove(mouseX:number, mouseY:number){
+        let s = this;
+        switch(s._touchTarget){
+            case TouchTarget.Water:
+                
+            break;
+        }
+    }
+
+    public onToucheEnd(){
 
     }
+}
+
+const enum TouchTarget{
+    Cube = 0,
+    Water = 1,
+    Sphere = 2,
+
 }

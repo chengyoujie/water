@@ -9,3 +9,4 @@ export class Vec2 extends Vec{
         s._data[1] = y;
     }
 }
+Vec.regist(2, Vec2);

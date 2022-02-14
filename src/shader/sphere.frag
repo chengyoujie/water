@@ -10,19 +10,19 @@ const float IOR_WATER = 1.333;//水的折射率
 uniform vec3 uLightDir;
 
 /**获取圆的颜色*/
-vec3 getSphereColor(vec3 position){
+vec3 getSphereColor(vec3 point){
     vec3 color = vec3(0.5);
-    color *= 1.0 - 0.9/pow((1.0+uSphereRadius - abs(position.x)) / uSphereRadius, 3.0);//1-0.9/pow(1+0.25-abs(x)/0.25, 3)的形状 ╭╮
-    color *= 1.0 - 0.9/pow((1.0 + uSphereRadius - abs(position.z)) / uSphereRadius, 3.0);
-    color *= 1.0 - 0.9/pow((position.y + 1.0 + uSphereRadius) / uSphereRadius, 3.0);//1.0 - 0.9/Math.pow((x+ 1.0 + 0.25) / 0.25, 3.0) 的形状 ╭─
+    color *= 1.0 - 0.9/pow((1.0 + uSphereRadius - abs(point.x)) / uSphereRadius, 3.0);//1-0.9/pow(1+0.25-abs(x)/0.25, 3)的形状 ╭╮
+    color *= 1.0 - 0.9/pow((1.0 + uSphereRadius - abs(point.z)) / uSphereRadius, 3.0);
+    color *= 1.0 - 0.9/pow((point.y + 1.0 + uSphereRadius) / uSphereRadius, 3.0);//1.0 - 0.9/Math.pow((x+ 1.0 + 0.25) / 0.25, 3.0) 的形状 ╭─
 
     //caustics
-    vec3 sphereNormal = (vPosition - uSphereCenter)/uSphereRadius;
+    vec3 sphereNormal = (point - uSphereCenter)/uSphereRadius;
     vec3 refractedLight = refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR/IOR_WATER);
     float diffuse = max(0.0, dot(-refractedLight, sphereNormal)) * 0.5;
-    vec4 info = texture2D(uWater, vPosition.xz*0.5+0.5);
-    if(vPosition.y < info.r){
-        vec4 caustic = texture2D(uCaustics, 0.75*(vPosition.xz - vPosition.y * refractedLight.xz/refractedLight.y)*0.5 + 0.5);
+    vec4 info = texture2D(uWater, point.xz*0.5+0.5);
+    if(point.y < info.r){
+        vec4 caustic = texture2D(uCaustics, 0.75*(point.xz - point.y * refractedLight.xz/refractedLight.y)*0.5 + 0.5);
         diffuse *= caustic.r * 4.0;
     }
     color += diffuse;
@@ -31,8 +31,8 @@ vec3 getSphereColor(vec3 position){
 }
 
 void main(){
-    vec4 info = texture2D(uWater, vPosition.xz*0.5+0.5);
     gl_FragColor = vec4(getSphereColor(vPosition), 1.0);
+    vec4 info = texture2D(uWater, vPosition.xz*0.5+0.5);
     if(vPosition.y < info.r){
         gl_FragColor.rgb *= underwaterColor * 1.2;
     }

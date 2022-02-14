@@ -25,7 +25,7 @@ void main(){
     float oldArea = length(dFdx(vOldPos)) * length(dFdy(vOldPos));
     float newArea = length(dFdx(vNewPos)) * length(dFdy(vNewPos));
     gl_FragColor = vec4(oldArea/newArea*0.2, 1.0, 0.0, 0.0);
-    
+
     vec3 refractedLight = refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);
 
     vec3 dir = (uSphereCenter - vNewPos) / uSphereRadius;

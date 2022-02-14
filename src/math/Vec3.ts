@@ -28,3 +28,4 @@ export class Vec3 extends Vec{
 
 
 }
+Vec.regist(3, Vec3);
