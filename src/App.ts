@@ -77,7 +77,6 @@ export class App{
         ]).then((imgs:any)=>{
             for(let i=0; i<imgs.length; i++)this._images[imgs[i].name] = imgs[i].img;
             this.init();
-            console.log(imgs)
         })
     }
     private init(){
@@ -352,8 +351,9 @@ export class App{
 
     public resize(width:number, height:number){
         let s = this;
-        width = 800;
-        height = 800;
+        // width = 800;
+        // height = 800;
+        height =width;// = Math.min(width, height);//等比例缩放
         s.width = width*s.ratio;//width; 
         s.height = height*s.ratio;//height;
         s._mainCanvas.width = s.width;
