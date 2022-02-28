@@ -127,7 +127,6 @@ export class App{
             uStrength:0.01,//0.01,
             uRadius:0.03,//0.03,
             uCenter:new Vec2(0, 0),//x, z
-            drawType:DrawType.POINTS,
         }
         s._waterDropProgram = new WebGL(s._gl, waterInfo, waterInfoDropFrag);
         s._waterDropProgram.resize(s.width, s.height)
@@ -219,7 +218,7 @@ export class App{
         //     uTexture:causticTexure,
         //     uMat:s._mvpMatrix,
         //     uSize:new GLArray([1/causticTexure.width, 1/causticTexure.height]),
-        //     drawType:DrawType.LINES
+        //     // drawType:DrawType.LINES
         // }
         // let waterTestlProgram = new WebGL(s._gl, testVert, testFrag);
         // waterTestlProgram.resize(s.width, s.height);

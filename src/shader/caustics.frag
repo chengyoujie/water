@@ -26,19 +26,18 @@ void main(){
     float newArea = length(dFdx(vNewPos)) * length(dFdy(vNewPos));
     gl_FragColor = vec4(oldArea/newArea*0.2, 1.0, 0.0, 0.0);
     
-    // vec3 refractedLight = refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);
+    vec3 refractedLight = refract(-uLightDir, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);
 
-    // vec3 dir = (uSphereCenter - vNewPos) / uSphereRadius;
-    // vec3 area = cross(dir, refractedLight);
-    // float shadow = dot(area, area);
-    // float dist = dot(dir, -refractedLight);
-    // shadow = 1.0 + (shadow - 1.0) / (0.05 + dist * 0.025);
-    // shadow = clamp(1.0/(1.0+exp(-shadow)), 0.0, 1.0);
-    // shadow = mix(1.0, shadow, clamp(dist*2.0, 0.0, 1.0));
-    // // gl_FragColor.g = shadow;
+    vec3 dir = (uSphereCenter - vNewPos) / uSphereRadius;
+    vec3 area = cross(dir, refractedLight);
+    float shadow = dot(area, area);
+    float dist = dot(dir, -refractedLight);
+    shadow = 1.0 + (shadow - 1.0) / (0.05 + dist * 0.025);
+    shadow = clamp(1.0/(1.0+exp(-shadow)), 0.0, 1.0);
+    shadow = mix(1.0, shadow, clamp(dist*2.0, 0.0, 1.0));
+    gl_FragColor.g = shadow;
 
-    // vec2 t = intersectCube(vNewPos, -refractedLight, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));
-    // gl_FragColor.r *= 1.0 / (1.0 + exp(-200.0 / (1.0 + 10.0 * (t.y - t.x)) * (vNewPos.y - refractedLight.y * t.y - 2.0/12.0)));
+    vec2 t = intersectCube(vNewPos, -refractedLight, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));
+    gl_FragColor.r *= 1.0 / (1.0 + exp(-200.0 / (1.0 + 10.0 * (t.y - t.x)) * (vNewPos.y - refractedLight.y * t.y - 2.0/12.0)));
 
-    // gl_FragColor = vec4(0.94, 0.74, 0.74, 0.5);
 }
