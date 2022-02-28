@@ -156,7 +156,7 @@ export class WebGL implements ICanBindTexture{
             }
         }
         if(renderData.indexs){
-            let data = renderData.indexs.getUnit8Array();;
+            let data = renderData.indexs.getUnit16Array();;
             let buff = s.createIndexBuffer(data);
             s._indexs.buff = buff;
             s._indexs.data = buff;
@@ -269,13 +269,13 @@ export class WebGL implements ICanBindTexture{
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, s._indexs.buff);
         if(s._indexs.changeData)
         {
-            let data = s._indexs.changeData.getUnit8Array();
+            let data = s._indexs.changeData.getUnit16Array();
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
             s._indexs.changeData = null;
         }
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, s._indexs.data);
         let drawType =  s._renderData.drawType==undefined?DrawType.TRIANGLES:s._renderData.drawType;
-        gl.drawElements(drawType, s._indexs.count, gl.UNSIGNED_BYTE, 0);
+        gl.drawElements(drawType, s._indexs.count, gl.UNSIGNED_SHORT, 0);
         if(s._renderData.enable){
             for(let i=0; i<s._renderData.enable.length; i++)gl.disable(s._renderData.enable[i]);
         }

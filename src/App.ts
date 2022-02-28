@@ -113,7 +113,7 @@ export class App{
         let waterInfoTexure1:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
         let waterInfoTexure2:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
         let causticTexure:Texture = new Texture(gl, 1024, 1024);
-        let waterSurfaceMesh = new PlaneMesh(10, 10);
+        let waterSurfaceMesh = new PlaneMesh(200, 200);
         let tiles:Texture = new Texture(gl, tilesImg, {wrap:TextureWrapMode.REPEAT, filterMig:TextureMinFilter.LINEAR, format:PixelFormat.RGB});
         let cube = new CubeMap(gl, s._images["xpos"], s._images["xneg"], s._images["ypos"], s._images["ypos"], s._images["zpos"], s._images["zneg"], {
             filter:TextureMagFilter.LINEAR, wrap:TextureWrapMode.CLAMP_TO_EDGE, format:PixelFormat.RGB
@@ -122,11 +122,12 @@ export class App{
         //添加水面的波纹
         s._waterDropData = {
             aPos:new GLArray(waterInfoPlan.vertext),
+            indexs:new GLArray(waterInfoPlan.indexs),
             uTexture:waterInfoTexure1,
             uStrength:0.01,//0.01,
             uRadius:0.03,//0.03,
             uCenter:new Vec2(0, 0),//x, z
-            indexs:new GLArray(waterInfoPlan.indexs)
+            drawType:DrawType.POINTS,
         }
         s._waterDropProgram = new WebGL(s._gl, waterInfo, waterInfoDropFrag);
         s._waterDropProgram.resize(s.width, s.height)
@@ -176,11 +177,11 @@ export class App{
         //更新水面中球体的信息
         let waterSphereData:ShaderParamData = {
             aPos:new GLArray(waterInfoPlan.vertext),
+            indexs:new GLArray(waterInfoPlan.indexs),
             uTexture:waterInfoTexure1,
             uOldSphereCenter:s._sphereOldCenter,//旧的圆心坐标
             uNewSphereCenter:s._sphereCenter,//新的圆心坐标
             uSphereRadius:s._sphereRadius,//圆的半径
-            indexs:new GLArray(waterInfoPlan.indexs)
         }
         let waterSphereProgram = new WebGL(s._gl, waterInfo, waterInfoSpherelFrag);
         waterSphereProgram.resize(s.width, s.height);
@@ -202,7 +203,6 @@ export class App{
                 uLightDir:lightDir,
                 uSphereCenter:s._sphereCenter,
                 uSphereRadius:s._sphereRadius,
-                drawType:DrawType.TRIANGLES,
                 clearn:[ClearBufferMask.COLOR_BUFFER_BIT]
             }
             let causticsProgram = new WebGL(s._gl, causticsVert, causticsFrag);
@@ -214,11 +214,12 @@ export class App{
         
         //test 测试显示
         // let waterTestlData:ShaderParamData = {
-        //     aPos:new GLArray(waterInfoPlan.vertext),
-        //     uTexture:waterInfoTexure1,
+        //     aPos:new GLArray(waterSurfaceMesh.vertext),
+        //     indexs:new GLArray(waterSurfaceMesh.indexs),
+        //     uTexture:causticTexure,
         //     uMat:s._mvpMatrix,
         //     uSize:new GLArray([1/causticTexure.width, 1/causticTexure.height]),
-        //     indexs:new GLArray(waterInfoPlan.indexs)
+        //     drawType:DrawType.LINES
         // }
         // let waterTestlProgram = new WebGL(s._gl, testVert, testFrag);
         // waterTestlProgram.resize(s.width, s.height);
@@ -238,7 +239,6 @@ export class App{
             uLightDir:lightDir,
             uCaustics:causticTexure,
             indexs:new GLArray(cubeMesh.indexs),
-            drawType:DrawType.TRIANGLES,
             enable:[ShaderEnableType.CULL_FACE]
         }
         let cubeProgram = new WebGL(s._gl, cubeVert, cubeFrag);
@@ -260,7 +260,6 @@ export class App{
             indexs:new GLArray(waterSurfaceMesh.indexs),
             enable:[ShaderEnableType.CULL_FACE],
             cullFace:CullFaceMode.FRONT,
-            drawType:DrawType.TRIANGLES
         }
         let waterSurfaceUpProgram = new WebGL(s._gl, waterSurfaceVert, waterSurfaceUpFrag);
         waterSurfaceUpProgram.resize(s.width, s.height)
@@ -281,7 +280,6 @@ export class App{
             indexs:new GLArray(waterSurfaceMesh.indexs),
             enable:[ShaderEnableType.CULL_FACE],
             cullFace:CullFaceMode.BACK,
-            drawType:DrawType.TRIANGLES
         }
         let waterSurfaceDownProgram = new WebGL(s._gl, waterSurfaceVert, waterSurfaceDownFrag);
         waterSurfaceDownProgram.resize(s.width, s.height)

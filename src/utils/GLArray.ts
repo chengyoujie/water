@@ -67,4 +67,8 @@ export class GLArray{
     public getUnit8Array(){
         return new Uint8Array(this._data);
     }
+    
+    public getUnit16Array(){
+        return new Uint16Array(this._data);
+    }
 }
