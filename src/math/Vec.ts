@@ -200,6 +200,17 @@ export abstract class Vec{
         return result;
     }
 
+    /**拷贝一个vec */
+    copy(vec:Vec){
+        let s = this;
+        if(vec.size != s._size){
+            Log.warn("两个不同的向量不能相除 ");
+            return;
+        }
+        for(let i=0; i<s._size; i++)s._data[i] = vec.data[i];
+        return s;
+    }
+
 
     public set(index:number, value:number){
         let s = this;
@@ -221,6 +232,13 @@ export abstract class Vec{
     /**向量的大小 */
     public get size(){
         return this._size;
+    }
+
+    public toString(){
+        let str = "[";
+        str += this._data.join(" , ");
+        str += "]";
+        return str;
     }
 
     private static _vecDic:{[size:number]:{new(...args):Vec}} = {};

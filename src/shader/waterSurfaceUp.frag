@@ -1,6 +1,6 @@
 precision highp float;
-varying vec3 vPosition;
 uniform samplerCube uSky;
+varying vec3 vPosition;
 uniform vec3 uEye;
 uniform sampler2D uWater;
 const float IOR_AIR = 1.0;//空气的折射率
@@ -93,15 +93,15 @@ vec3 getWallColor(vec3 point){
 vec3 getSurfaceRayColor(vec3 origin, vec3 ray, vec3 waterColor){
     vec3 color;
     float q = intersectSphere(origin, ray, uSphereCenter, uSphereRadius);
-    if(q < 1.0e6){
+    if(q < 1.0e6){//球体颜色
         color = getSphereColor(origin+ray*q);
-    }else if(ray.y < 0.0){
+    }else if(ray.y < 0.0){//墙的颜色
         vec2 t = intersectCube(origin, ray, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));
         color = getWallColor(origin + ray * t.y);
-    }else{
+    }else{//水面颜色
         vec2 t = intersectCube(origin, ray, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0 ,1.0) );
         vec3 hit = origin + ray * t.y;
-        if(hit.y < 2.0 /12.0){
+        if(hit.y < 2.0 /12.0){//墙的颜色
             color = getWallColor(hit);
         }else{
             color = textureCube(uSky, ray).rgb;

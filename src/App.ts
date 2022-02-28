@@ -30,7 +30,7 @@ import { PlaneMesh } from "./swaming/mesh/PlaneMesh";
 import { SphereMesh } from "./swaming/mesh/SphereMesh";
 import { CubeMesh } from "./swaming/mesh/CubeMesh";
 import { Vec3 } from "./math/Vec3";
-import { ClearBufferMask, CullFaceMode, DataType, DrawType, ShaderEnableType, TextureMagFilter, TextureMinFilter, TextureWrapMode } from "./webgl/WebGLInterface";
+import { ClearBufferMask, CullFaceMode, DataType, DrawType, PixelFormat, ShaderEnableType, TextureMagFilter, TextureMinFilter, TextureWrapMode } from "./webgl/WebGLInterface";
 import { Texture } from "./webgl/Texture";
 import { Vec2 } from "./math/Vec2";
 import { Raytracer } from "./swaming/Raytracer";
@@ -53,10 +53,11 @@ export class App{
 
     private _waterDropData:ShaderParamData;
     private _waterDropProgram:WebGL;
-    private _angleX:number = 0;
-    private _angleY:number = 0;
+    private _angleX:number = -87;
+    private _angleY:number = -181;
 
     private _mvpMatrix:Matrix4;
+    private _eye:Vec3;
 
 
     constructor(mainCanvas:HTMLCanvasElement, width:number, height:number, ratio?:number){
@@ -71,7 +72,7 @@ export class App{
     public statr(){
         ComUtils.loadImages([
             {name:"xpos", src:xpos}, {name:"ypos", src:ypos}, {name:"zpos", src:zpos}, 
-            {name:"xneg", src:xneg}, {name:"yneg", src:ypos}, {name:"zneg", src:zneg}, 
+            {name:"xneg", src:xneg}, {name:"zneg", src:zneg}, 
             {name:"tiles", src:tilesImg}
         ]).then((imgs:any)=>{
             for(let i=0; i<imgs.length; i++)this._images[imgs[i].name] = imgs[i].img;
@@ -90,15 +91,16 @@ export class App{
 
         s.matrixContext.indentity();
         s.matrixContext.translate(0, 0, -4);
-        s.matrixContext.rotate(s._angleX, 1, 0, 0);
-        s.matrixContext.rotate(s._angleY, 0, 1, 0);
+        s.matrixContext.rotate(-s._angleX, 1, 0, 0);
+        s.matrixContext.rotate(-s._angleY, 0, 1, 0);
         s.matrixContext.translate(0, 0.5, 0)
 
         //全局变量
         s._sphereCenter = new Vec3(-0.4, -0.75, 0.2);
         s._sphereOldCenter = s._sphereCenter.clone() as Vec3;
         s._sphereRadius = 0.25;
-        let lightDir = new Vec3(2.0, 2.0, -1.0);
+        s._eye = new Vec3(0.0036560758674491246, 3.4975610107321784, -0.13961990474388142);
+        let lightDir = new Vec3(2.0, 2.0, -1.0).unit();
 
         s._mvpMatrix = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
         s._mvpMatrix.transpose();//需要转置下 
@@ -112,8 +114,10 @@ export class App{
         let waterInfoTexure2:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
         let causticTexure:Texture = new Texture(gl, 1024, 1024);
         let waterSurfaceMesh = new PlaneMesh(10, 10);
-        let tiles:Texture = new Texture(gl, tilesImg, {wrap:TextureWrapMode.REPEAT});
-        let cube = new CubeMap(gl, s._images["xpos"], s._images["xneg"], s._images["ypos"], s._images["ypos"], s._images["zpos"], s._images["zneg"])
+        let tiles:Texture = new Texture(gl, tilesImg, {wrap:TextureWrapMode.REPEAT, filterMig:TextureMinFilter.LINEAR, format:PixelFormat.RGB});
+        let cube = new CubeMap(gl, s._images["xpos"], s._images["xneg"], s._images["ypos"], s._images["ypos"], s._images["zpos"], s._images["zneg"], {
+            filter:TextureMagFilter.LINEAR, wrap:TextureWrapMode.CLAMP_TO_EDGE, format:PixelFormat.RGB
+        })
         /** */
         //添加水面的波纹
         s._waterDropData = {
@@ -184,6 +188,7 @@ export class App{
         waterSphereProgram.enableUseFrameBuffer(waterInfoTexure2);
         waterSphereProgram.onRenderFun(()=>{
             waterInfoTexure1.swapTexture(waterInfoTexure2);
+            s._sphereOldCenter.copy(s._sphereCenter);
         })
         s._programsFrameBuff.push(waterSphereProgram);
 
@@ -211,7 +216,7 @@ export class App{
         // let waterTestlData:ShaderParamData = {
         //     aPos:new GLArray(waterInfoPlan.vertext),
         //     uTexture:waterInfoTexure1,
-        //     uMat:mvp,
+        //     uMat:s._mvpMatrix,
         //     uSize:new GLArray([1/causticTexure.width, 1/causticTexure.height]),
         //     indexs:new GLArray(waterInfoPlan.indexs)
         // }
@@ -234,7 +239,7 @@ export class App{
             uCaustics:causticTexure,
             indexs:new GLArray(cubeMesh.indexs),
             drawType:DrawType.TRIANGLES,
-            enable:[ShaderEnableType.CULL_FACE, ShaderEnableType.DEPTH_TEST]
+            enable:[ShaderEnableType.CULL_FACE]
         }
         let cubeProgram = new WebGL(s._gl, cubeVert, cubeFrag);
         cubeProgram.resize(s.width, s.height)
@@ -245,7 +250,7 @@ export class App{
             aPos:new GLArray(waterSurfaceMesh.vertext),
             uMat:s._mvpMatrix,
             uWater:waterInfoTexure1,
-            uEye:new Vec3(0, -0.5, 4),
+            uEye:s._eye,
             uLightDir:lightDir,
             uTiles:tiles,
             uCausitcs:causticTexure,
@@ -266,7 +271,7 @@ export class App{
             aPos:new GLArray(waterSurfaceMesh.vertext),
             uMat:s._mvpMatrix,
             uWater:waterInfoTexure1,
-            uEye:new Vec3(0, -0.5, 4),
+            uEye:s._eye,
             uLightDir:lightDir,
             uTiles:tiles,
             uCausitcs:causticTexure,
@@ -306,6 +311,7 @@ export class App{
         s.update();
     }
 
+    /**给水面添加一个波动 */
     private addDrop(x:number, y:number, streng:number, radius:number){
         let s = this;
         let pos = s._waterDropData.uCenter as Vec2;
@@ -316,7 +322,7 @@ export class App{
         s._waterDropProgram.render();
     }
 
-
+    /**更新界面 */
     private update(){
         let s = this;
         let gl = s._gl;
@@ -340,7 +346,7 @@ export class App{
         // console.log(mvp.toString())
 
         for(let i=0; i<s._programs.length; i++){
-            if(s._programs[i].renderData["uMat"])s._programs[i].renderData["uMat"] = mvp;
+            // if(s._programs[i].renderData["uMat"])s._programs[i].renderData["uMat"] = mvp;
             s._programs[i].render();
         }
         gl.disable(gl.DEPTH_TEST);
@@ -373,6 +379,7 @@ export class App{
         s._oldTouchX = mouseX;
         s._oldTouchY = mouseY;
         let tracer = new Raytracer(s._gl, s.matrixContext);
+        s._eye.copy(tracer.eye);
         let ray = tracer.getRayForPixel(mouseX*s.ratio, mouseY*s.ratio);
         let pointOnPlane = tracer.eye.clone().add(ray.clone().multiply(-tracer.eye.get(1) / ray.get(1)));
         let sphereHitTest = Raytracer.hitTestSphere(tracer.eye, ray, s._sphereCenter, s._sphereRadius);
@@ -411,9 +418,12 @@ export class App{
                 s._sphereCenter.set(0, Math.max(s._sphereRadius-1, Math.min(1-s._sphereRadius, s._sphereCenter.get(0))));
                 s._sphereCenter.set(1, Math.max(s._sphereRadius-1, Math.min(10, s._sphereCenter.get(1))));
                 s._sphereCenter.set(2, Math.max(s._sphereRadius-1, Math.min(1-s._sphereRadius, s._sphereCenter.get(2))));
+                console.log(s._sphereCenter+"")
                 s._prevHit = nextHit;
             break;
             case TouchTarget.Cube:
+                tracer = new Raytracer(s._gl, s.matrixContext);
+                s._eye.copy(tracer.eye);
                 s._angleY -= mouseX - s._oldTouchX;
                 s._angleX -= mouseY - s._oldTouchY;
                 s._angleX = Math.max(-89.999, Math.min(89.9999, s._angleX));
@@ -425,6 +435,8 @@ export class App{
 
     public onToucheEnd(){
         let s = this;
+        let tracer = new Raytracer(s._gl, s.matrixContext);
+        s._eye.copy(tracer.eye);
         s._touchTarget = TouchTarget.None;
     }
 }

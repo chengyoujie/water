@@ -111,9 +111,14 @@ vec3 getSurfaceRayColor(vec3 origin, vec3 ray, vec3 waterColor){
     return color;
 }
 
+/**水面下方 */
 void main(){
+    //将vposition中 xz（水平面）平面内的坐标转化为[0-1]uv坐标
     vec2 coord = vPosition.xz*0.5+0.5;
+    //将平面内对应的水面信息取出来
     vec4 info = texture2D(uWater, coord);
+    //让水面看起来更尖
+    
     for(int i=0; i<5; i++){
         coord += info.ba * 0.005;
         info = texture2D(uWater, coord);

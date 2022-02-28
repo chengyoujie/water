@@ -31,12 +31,12 @@ export class CubeMap implements ICanBindTexture{
             return;
         }
         s._cubeList = [
-            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_POSITIVE_X, posX, s._cubeParam.fromatPosX),
-            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_NEGATIVE_X, negX, s._cubeParam.fromatNegX),
-            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_POSITIVE_Y, posY, s._cubeParam.fromatPosY),
-            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_NEGATIVE_Y, negY, s._cubeParam.fromatNegY),
-            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_POSITIVE_Z, posZ, s._cubeParam.fromatPosZ),
-            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_NEGATIVE_Z, negZ, s._cubeParam.fromatNegZ),
+            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_POSITIVE_X, posX, s._cubeParam.fromatPosX || s._cubeParam.format || PixelFormat.RGBA),
+            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_NEGATIVE_X, negX, s._cubeParam.fromatNegX || s._cubeParam.format || PixelFormat.RGBA),
+            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_POSITIVE_Y, posY, s._cubeParam.fromatPosY || s._cubeParam.format || PixelFormat.RGBA),
+            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_NEGATIVE_Y, negY, s._cubeParam.fromatNegY || s._cubeParam.format || PixelFormat.RGBA),
+            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_POSITIVE_Z, posZ, s._cubeParam.fromatPosZ || s._cubeParam.format || PixelFormat.RGBA),
+            s.getCubeItem(TextureCubeMapPos.TEXTURE_CUBE_MAP_NEGATIVE_Z, negZ, s._cubeParam.fromatNegZ || s._cubeParam.format || PixelFormat.RGBA),
         ];
         s._textureChange = true;
     }
@@ -79,16 +79,17 @@ export class CubeMap implements ICanBindTexture{
         gl.bindTexture(target, s._texture);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         if(s._textureChange){   
-            let gl = s._gl;
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, s._cubeParam.filterMag || s._cubeParam.filter || gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,  s._cubeParam.filterMig || s._cubeParam.filter || gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, s._cubeParam.wrapS || s._cubeParam.wrap || gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, s._cubeParam.wrapT || s._cubeParam.wrap || gl.CLAMP_TO_EDGE);
+            // let gl = s._gl;
+            let mag = s._cubeParam.filterMag || s._cubeParam.filter || gl.LINEAR;
+            let mig = s._cubeParam.filterMig || s._cubeParam.filter || gl.LINEAR;
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, mag);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER,  mig);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, s._cubeParam.wrapS || s._cubeParam.wrap || gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, s._cubeParam.wrapT || s._cubeParam.wrap || gl.CLAMP_TO_EDGE);
             for(let i=0; i<s._cubeList.length; i++)
             {
-                gl.texImage2D(s._cubeList[i].pos, s._textureIdx, s._cubeList[i].format || gl.RGBA, s._cubeList[i].format || gl.RGBA, gl.UNSIGNED_BYTE, s._cubeList[i].img);
+                gl.texImage2D(s._cubeList[i].pos, 0, s._cubeList[i].format || gl.RGBA, s._cubeList[i].format || gl.RGBA, gl.UNSIGNED_BYTE, s._cubeList[i].img);
             }
-            gl.generateMipmap(gl.TEXTURE_2D);
             s._textureChange = false;
         }
         return s._texture;
@@ -110,6 +111,8 @@ export interface CubeParam{
     filterMag?:TextureMagFilter;
     
     filterMig?:TextureMinFilter;
+
+    format?:PixelFormat;
 
     fromatNegX?:PixelFormat;
     fromatPosX?:PixelFormat;
