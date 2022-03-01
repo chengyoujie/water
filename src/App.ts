@@ -353,7 +353,7 @@ export class App{
         let s = this;
         // width = 800;
         // height = 800;
-        height =width;// = Math.min(width, height);//等比例缩放
+        width =height;// = Math.min(width, height);//等比例缩放
         s.width = width*s.ratio;//width; 
         s.height = height*s.ratio;//height;
         s._mainCanvas.width = s.width;
