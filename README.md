@@ -33,4 +33,4 @@ shader 可安装插件`WebGL GLSL Editor` 代码提示
 
 2. `webgl` 中用的矩阵需要转置下，使用列矩阵。
 
-3. 网页视图在`resize`的时候,canvas要设置`width=width`, `sytle.width=width*devicePixelRatio`
+3. 网页视图在`resize`的时候,canvas要设置`width=width`, `sytle.width=width*devicePixelRatio` (`devicePixelRatio`表示当前设备的物理像素与css像素的比值，即多少屏幕像素来绘制一个css像素)

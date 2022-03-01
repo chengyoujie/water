@@ -3,8 +3,8 @@ export abstract class Mesh{
     public vertext:number[];
     /**法线 */
     public noramals:number[];
-
-    public coords:number[];
+    /**uv坐标 */
+    public uv:number[];
     /**顶点索引*/
     public indexs:number[];
 

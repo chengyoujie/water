@@ -22,6 +22,7 @@ import zneg from "./res/zneg.jpg"
 import xpos from "./res/xpos.jpg"
 import ypos from "./res/ypos.jpg"
 import zpos from "./res/zpos.jpg"
+import earthImg from "./res/earth.png"
 import tilesImg from "./res/tiles.jpg"
 import { ComUtils } from "./utils/ComUtils";
 import { CubeMap } from "./webgl/CubeMap";
@@ -53,8 +54,8 @@ export class App{
 
     private _waterDropData:ShaderParamData;
     private _waterDropProgram:WebGL;
-    private _angleX:number = -87;
-    private _angleY:number = -181;
+    private _angleX:number = -45;
+    private _angleY:number = 45;
 
     private _mvpMatrix:Matrix4;
     private _eye:Vec3;
@@ -72,7 +73,7 @@ export class App{
     public statr(){
         ComUtils.loadImages([
             {name:"xpos", src:xpos}, {name:"ypos", src:ypos}, {name:"zpos", src:zpos}, 
-            {name:"xneg", src:xneg}, {name:"zneg", src:zneg}, 
+            {name:"xneg", src:xneg}, {name:"zneg", src:zneg}, {name:"earth", src:earthImg},
             {name:"tiles", src:tilesImg}
         ]).then((imgs:any)=>{
             for(let i=0; i<imgs.length; i++)this._images[imgs[i].name] = imgs[i].img;
@@ -98,12 +99,14 @@ export class App{
         s._sphereCenter = new Vec3(-0.4, -0.75, 0.2);
         s._sphereOldCenter = s._sphereCenter.clone() as Vec3;
         s._sphereRadius = 0.25;
-        s._eye = new Vec3(0.0036560758674491246, 3.4975610107321784, -0.13961990474388142);
+        s._eye = new Vec3(0, 0, 1);
         let lightDir = new Vec3(2.0, 2.0, -1.0).unit();
 
         s._mvpMatrix = s.matrixContext.projectionMatrix.multiply(s.matrixContext.modelViewMatrix);
         s._mvpMatrix.transpose();//需要转置下 
 
+         //球体
+        let sphereMesh = new SphereMesh(30);
         //水的信息（包含位置，速度， 法向量）waterInfo
         let waterInfoPlan = new PlaneMesh();
         let hasDerivatives = !!gl.getExtension("OES_standard_derivatives");
@@ -112,7 +115,7 @@ export class App{
         let waterInfoTexure1:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
         let waterInfoTexure2:Texture = new Texture(s._gl, 256, 256, {type:DataType.FLOAT, filter:filter});
         let causticTexure:Texture = new Texture(gl, 1024, 1024);
-        let waterSurfaceMesh = new PlaneMesh(200, 200);
+        let waterSurfaceMesh = new PlaneMesh(100, 100);
         let tiles:Texture = new Texture(gl, tilesImg, {wrap:TextureWrapMode.REPEAT, filterMig:TextureMinFilter.LINEAR, format:PixelFormat.RGB});
         let cube = new CubeMap(gl, s._images["xpos"], s._images["xneg"], s._images["ypos"], s._images["ypos"], s._images["zpos"], s._images["zneg"], {
             filter:TextureMagFilter.LINEAR, wrap:TextureWrapMode.CLAMP_TO_EDGE, format:PixelFormat.RGB
@@ -224,6 +227,7 @@ export class App{
         // waterTestlProgram.bindData(waterTestlData);
         // s._programs.push(waterTestlProgram)
 
+
         //水池
         let cubeMesh = new CubeMesh();
         cubeMesh.indexs.splice(12, 6);//去掉顶部的顶点索引
@@ -243,11 +247,15 @@ export class App{
         cubeProgram.resize(s.width, s.height)
         cubeProgram.bindData(cubeData)
         s._programs.push(cubeProgram)
+        
+       
         //水平面  上方
         let waterSurfaceUpData:ShaderParamData = {
             aPos:new GLArray(waterSurfaceMesh.vertext),
             uMat:s._mvpMatrix,
             uWater:waterInfoTexure1,
+            aSphereUv:new GLArray(sphereMesh.uv),
+            uSphereImg:earthImg,
             uEye:s._eye,
             uLightDir:lightDir,
             uTiles:tiles,
@@ -268,6 +276,7 @@ export class App{
             aPos:new GLArray(waterSurfaceMesh.vertext),
             uMat:s._mvpMatrix,
             uWater:waterInfoTexure1,
+            uSphereImg:earthImg,
             uEye:s._eye,
             uLightDir:lightDir,
             uTiles:tiles,
@@ -283,26 +292,29 @@ export class App{
         waterSurfaceDownProgram.resize(s.width, s.height)
         waterSurfaceDownProgram.bindData(waterSurfaceDownData)
         s._programs.push(waterSurfaceDownProgram)
-        
-        
-        
         //球体
-        let sphereMesh = new SphereMesh(15);
         let sphereData:ShaderParamData = {
             aPos:new GLArray(sphereMesh.vertext),
+            indexs:new GLArray(sphereMesh.indexs),
+            aSphereUv:new GLArray(sphereMesh.uv),
+            uSphereImg:earthImg,
             uMat:s._mvpMatrix,
             uSphereCenter:s._sphereCenter,
             uSphereRadius:s._sphereRadius,
             uLightDir:lightDir,
             uCaustics:causticTexure,
             uWater:waterInfoTexure1,
-            indexs:new GLArray(sphereMesh.indexs),
-            // drawType:DrawType.LINES,
+            drawType:DrawType.TRIANGLE_STRIP,
         }
         let sphereProgram = new WebGL(s._gl, sphereVert, sphereFrag);
         sphereProgram.resize(s.width, s.height)
         sphereProgram.bindData(sphereData)
         s._programs.push(sphereProgram)
+        
+        
+        
+        let tracer = new Raytracer(s._gl, s.matrixContext);
+        s._eye.copy(tracer.eye);
 
         s.update();
     }
@@ -353,14 +365,22 @@ export class App{
         let s = this;
         // width = 800;
         // height = 800;
-        width =height;// = Math.min(width, height);//等比例缩放
-        s.width = width*s.ratio;//width; 
-        s.height = height*s.ratio;//height;
+        // width =height = Math.min(width, height);//等比例缩放
+        let styleWidth = width/s.ratio;
+        let styleHeight = height/s.ratio;
+        // if(s.ratio>1){
+            styleWidth = width;
+            styleHeight = height;
+            width = width*s.ratio;
+            height = height*s.ratio;
+        // }
+        s.width = width;//width; 
+        s.height = height;//height;
         s._mainCanvas.width = s.width;
         s._mainCanvas.height = s.height;
-        s._mainCanvas.style.width = width + "px";
-        s._mainCanvas.style.height = height + "px";
-        s._gl.viewport(0, 0, s.width, s.height);
+        s._mainCanvas.style.width = styleWidth + "px";
+        s._mainCanvas.style.height = styleHeight  + "px";
+        s._gl.viewport(0, 0, s.width/s.ratio, s.height/s.ratio);
         for(let i=0; i<s._programs.length; i++){
             s._programs[i].resize(s.width, s.height)
         }

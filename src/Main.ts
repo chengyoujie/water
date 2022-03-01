@@ -30,12 +30,17 @@ window.onresize = debounce(resize, 100);
 //手机上的touch事件
 document.ontouchstart = function(e:TouchEvent){
     e.preventDefault();
+    e.stopImmediatePropagation();
     if(app&&e.touches.length>0)app.onTouchStart(e.touches[0].pageX, e.touches[0].pageY);
 }
 document.ontouchmove = function(e:TouchEvent){
+    e.preventDefault(); 
+    e.stopImmediatePropagation();
     if(app&&e.touches.length>0)app.onToucheMove(e.touches[0].pageX, e.touches[0].pageY);
 }
 document.ontouchend = function(e:TouchEvent){
+    e.preventDefault(); 
+    e.stopImmediatePropagation();
     if(app&&e.touches.length>0)app.onToucheEnd();
 }
 //网页上的event

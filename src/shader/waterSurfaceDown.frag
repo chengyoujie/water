@@ -12,6 +12,7 @@ uniform vec3 uSphereCenter;//圆的坐标
 uniform float uSphereRadius;//圆的半径
 uniform sampler2D uCausitcs;
 const float poolHeight = 1.0;//水池的高度
+uniform sampler2D uSphereImg;//球体的图片
 
 //判断是否与球体相交
 float intersectSphere(vec3 orgin, vec3 ray, vec3 sphereCenter, float sphereRadius){
@@ -28,7 +29,7 @@ float intersectSphere(vec3 orgin, vec3 ray, vec3 sphereCenter, float sphereRadiu
 }
 //获取球体的颜色
 vec3 getSphereColor(vec3 point){
-    vec3 color = vec3(0.5);
+    vec3 color = texture2D(uSphereImg, point.xz*0.5+0.5).rgb;
     color *= 1.0 - 0.9/ pow((1.0 + uSphereRadius - abs(point.x)) / uSphereRadius, 3.0);
     color *= 1.0 - 0.9/ pow( (1.0 + uSphereRadius - abs(point.z)) / uSphereRadius, 3.0 );
     color *= 1.0 - 0.9/ pow((point.y + 1.0 + uSphereRadius) / uSphereRadius, 3.0);
